@@ -16,7 +16,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
-    "pyrefly>=0.48.1",
     "pyupgrade>=3.21.2",
     "ruff>=0.14.13",
 ]

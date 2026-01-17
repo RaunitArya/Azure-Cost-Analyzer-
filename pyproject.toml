@@ -1,0 +1,22 @@
+[project]
+name = "azure-cost-analyzer"
+version = "0.1.0"
+description = "Developers often overspend on cloud; this tool: Fetches Azure VM, app service, DB cost Predicts monthly bill Shows per-service breakdown Alerts if budget exceeds a limit Suggests cost-optimization tips"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.128.0",
+    "google-genai>=1.59.0",
+    "loguru>=0.7.3",
+    "pathlib>=1.0.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pyrefly>=0.48.1",
+    "pyupgrade>=3.21.2",
+    "ruff>=0.14.13",
+]

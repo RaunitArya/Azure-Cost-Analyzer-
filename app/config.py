@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     OBJECT_ID: str = Field(..., min_length=20)
     TENANT_ID: str = Field(..., min_length=20)
     CLIENT_SECRET: str = Field(..., min_length=20)
+    HOST: str = Field(default="127.0.0.1")
+    PORT: int = Field(default=8000)
 
 
 settings = Settings()

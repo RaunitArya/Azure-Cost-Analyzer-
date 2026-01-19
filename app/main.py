@@ -1,6 +1,19 @@
-def main():
-    print("Hello from azure-cost-analyzer!")
+from fastapi import FastAPI
+import uvicorn
+from config import settings
+
+app = FastAPI()
+
+
+@app.get("/")
+def home():
+    return {"message: Hello from azure-cost-analyzer!"}
 
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=True,
+    )

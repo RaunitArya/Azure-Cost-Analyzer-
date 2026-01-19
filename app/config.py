@@ -10,10 +10,11 @@ class Settings(BaseSettings):
         extra="forbid",
     )
 
-    CLIENT_ID: str = Field(..., min_length=20)
-    OBJECT_ID: str = Field(..., min_length=20)
-    TENANT_ID: str = Field(..., min_length=20)
-    CLIENT_SECRET: str = Field(..., min_length=20)
+    AZURE_CLIENT_ID: str = Field(..., min_length=20)
+    AZURE_OBJECT_ID: str = Field(..., min_length=20)
+    AZURE_TENANT_ID: str = Field(..., min_length=20)
+    AZURE_CLIENT_SECRET: str = Field(..., min_length=20)
+    AZURE_SUBSCRIPTION_ID: str = Field(..., min_length=20)
     HOST: str = Field(default="127.0.0.1")
     PORT: int = Field(default=8000)
 

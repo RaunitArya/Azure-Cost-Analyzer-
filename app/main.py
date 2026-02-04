@@ -1,18 +1,16 @@
 from contextlib import asynccontextmanager
-import traceback
+
 
 import uvicorn
 from config import settings
-from exceptions.cost_exceptions import (
-    AzureApiError,
-    DataProcessingError,
-    DataValidationError,
-)
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+
+from fastapi import FastAPI
+
 from loguru import logger
 from routes.cost_routes import router as cost_router
 from services.cost_service import shutdown_executor
+
+from handlers.exception_handlers import register_exception_handlers
 
 
 @asynccontextmanager
@@ -30,28 +28,6 @@ async def lifespan(app: FastAPI):
     logger.info("Cleanup complete")
 
 
-def create_error_response(
-    status_code: int,
-    message: str,
-    exc: Exception | None = None,
-    include_debug: bool = False,
-) -> JSONResponse:
-    """
-    Create a standardized error response.
-    In production, sensitive details are hidden.
-    """
-    content = {"detail": message}
-
-    if include_debug and settings.show_debug_info and exc:
-        content["debug"] = {
-            "exception_type": type(exc).__name__,
-            "exception_message": str(exc),
-            "traceback": traceback.format_exc() if settings.DEBUG else None,
-        }
-
-    return JSONResponse(status_code=status_code, content=content)
-
-
 app = FastAPI(
     title="Azure Cost Analyzer API",
     version="1.0.0",
@@ -64,49 +40,8 @@ app = FastAPI(
 )
 
 
-# Global Exception Handlers
-@app.exception_handler(AzureApiError)
-async def azure_api_error_handler(request: Request, exc: AzureApiError):
-    logger.error(f"Azure API error: {exc}")
-    return create_error_response(
-        status_code=502,
-        message="Azure API error occurred" if settings.is_production else str(exc),
-        exc=exc,
-        include_debug=True,
-    )
-
-
-@app.exception_handler(DataProcessingError)
-async def data_processing_error_handler(request: Request, exc: DataProcessingError):
-    logger.error(f"Data processing error: {exc}")
-    return create_error_response(
-        status_code=500,
-        message="Data processing error" if settings.is_production else str(exc),
-        exc=exc,
-        include_debug=True,
-    )
-
-
-@app.exception_handler(DataValidationError)
-async def data_validation_error_handler(request: Request, exc: DataValidationError):
-    logger.error(f"Data validation error: {exc}")
-    return create_error_response(
-        status_code=422,
-        message="Data validation error" if settings.is_production else str(exc),
-        exc=exc,
-        include_debug=True,
-    )
-
-
-@app.exception_handler(Exception)
-async def generic_error_handler(request: Request, exc: Exception):
-    logger.exception(f"Unexpected error: {exc}")
-    return create_error_response(
-        status_code=500,
-        message="An unexpected error occurred",
-        exc=exc,
-        include_debug=True,
-    )
+# Register exception handlers
+register_exception_handlers(app)
 
 
 # Register routers

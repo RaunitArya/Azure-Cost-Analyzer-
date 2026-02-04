@@ -77,13 +77,7 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8000)
 
     # Database configuration
-    POSTGRES_SERVER: str = Field(..., min_length=5)
-    POSTGRES_PORT: int = Field(..., ge=1, le=65535)
-    POSTGRES_DB: str = Field(..., min_length=3)
-    POSTGRES_USER: str = Field(..., min_length=6)
-    POSTGRES_PASSWORD: str = Field(..., min_length=4)
-    PGADMIN_EMAIL: str = Field(..., min_length=10)
-    PGADMIN_PASSWORD: str = Field(..., min_length=5)
+    DATABASE_URL: str = Field(..., min_length=10)
 
     @property
     def is_development(self) -> bool:

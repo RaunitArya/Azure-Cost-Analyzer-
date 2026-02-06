@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import Field
+from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 from loguru import logger
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8000)
 
     # Database configuration
-    DATABASE_URL: str = Field(..., min_length=10)
+    DATABASE_URL: PostgresDsn = Field(...)
 
     @property
     def is_development(self) -> bool:
@@ -103,6 +103,11 @@ class Settings(BaseSettings):
     def show_debug_info(self) -> bool:
         """Determine if debug info should be exposed in responses."""
         return self.DEBUG or self.is_development
+
+    @property
+    def database_url_string(self) -> str:
+        """Get DATABASE_URL as string for SQLAlchemy."""
+        return str(self.DATABASE_URL)
 
 
 settings = Settings()

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from loguru import logger
 from routes.cost_routes import router as cost_router
 from services.cost_service import shutdown_executor
+from db.database import init_db, close_db, get_session_context
 
 from handlers.exception_handlers import register_exception_handlers
 
@@ -21,9 +22,17 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting Azure Cost Analyzer API...")
+    logger.info("Initializing database connection...")
+    await init_db()
+    logger.info("Database initialized successfully")
+
     yield
+
     # Shutdown
     logger.info("Shutting down Azure Cost Analyzer API...")
+    logger.info("Closing database connections...")
+    await close_db()
+    logger.info("Database connections closed")
     shutdown_executor()
     logger.info("Cleanup complete")
 
@@ -71,7 +80,19 @@ async def home():
 
 @app.get("/health")
 async def health_check():
-    response = {"status": "healthy"}
+    from sqlalchemy import text
+
+    try:
+        async with get_session_context() as session:
+            await session.exec(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+
+    response = {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+    }
 
     # Add extra info in development
     if settings.show_debug_info:

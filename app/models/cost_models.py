@@ -22,7 +22,6 @@ class CostRecord(BaseModel):
     """Validated and preprocessed cost record"""
 
     model_config = ConfigDict(
-        json_encoders={Decimal: float},
         validate_assignment=True,
     )
 
@@ -66,7 +65,6 @@ class DailyCostRecord(BaseModel):
     """Cost record with daily granularity"""
 
     model_config = ConfigDict(
-        json_encoders={Decimal: float},
         validate_assignment=True,
     )
 

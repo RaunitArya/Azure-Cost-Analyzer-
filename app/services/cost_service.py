@@ -1,5 +1,5 @@
 import asyncio
-import atexit
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from functools import wraps
@@ -28,9 +28,6 @@ def _shutdown_executor() -> None:
     logger.info("Shutting down ThreadPoolExecutor...")
     _executor.shutdown(wait=True, cancel_futures=False)
     logger.info("ThreadPoolExecutor shutdown complete")
-
-
-atexit.register(_shutdown_executor)
 
 
 def handle_azure_exceptions(func: Callable) -> Callable:

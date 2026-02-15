@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessi
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+import db.models  # noqa: F401
+
 from config import settings
 from loguru import logger
 

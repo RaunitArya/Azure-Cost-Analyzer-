@@ -81,7 +81,7 @@ async def get_or_create_billing_period(
 
 
 async def get_or_create_azure_service(
-    session: AsyncSession, service_name: str
+    session: AsyncSession, service_name: str, service_category: str | None = None
 ) -> AzureService:
     """Get an existing AzureService by name, or create it."""
     statement = select(AzureService).where(AzureService.name == service_name)
@@ -89,6 +89,10 @@ async def get_or_create_azure_service(
     service = result.first()
 
     if service:
+        if service_category and service.service_category != service_category:
+            service.service_category = service_category
+            session.add(service)
+            await session.flush()
         return service
 
     service = AzureService(name=service_name)
@@ -168,7 +172,9 @@ async def save_service_costs(
     saved = 0
     try:
         for record in records:
-            service = await get_or_create_azure_service(session, record.service_name)
+            service = await get_or_create_azure_service(
+                session, record.service_name, getattr(record, "service_category", None)
+            )
             await upsert_service_cost(
                 session=session,
                 service_id=service.id,

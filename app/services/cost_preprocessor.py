@@ -66,6 +66,7 @@ def preprocess_service_costs(
         try:
             record = CostRecord(
                 service_name=raw_cost.get("ServiceName", "Unknown"),
+                service_category=raw_cost.get("ServiceFamily"),
                 cost=raw_cost.get("Cost", 0),
                 currency=raw_cost.get("Currency", "INR"),
                 billing_period_start=billing_period_start,

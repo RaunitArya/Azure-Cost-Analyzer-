@@ -26,6 +26,7 @@ class CostRecord(BaseModel):
     )
 
     service_name: str
+    service_category: str | None = Field(default=None)
     cost: Decimal = Field(ge=0, description="Cost amount, must be non-negative")
     currency: str = Field(default="INR")
 

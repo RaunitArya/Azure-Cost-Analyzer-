@@ -96,7 +96,10 @@ def _fetch_month_to_date_cost_by_service_sync():
         dataset=QueryDataset(
             granularity="None",
             aggregation={"totalCost": QueryAggregation(name="Cost", function="Sum")},
-            grouping=[QueryGrouping(type="Dimension", name="ServiceName")],
+            grouping=[
+                QueryGrouping(type="Dimension", name="ServiceName"),
+                QueryGrouping(type="Dimension", name="ServiceFamily"),
+            ],
         ),
     )
 

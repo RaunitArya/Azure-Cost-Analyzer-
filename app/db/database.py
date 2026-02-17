@@ -5,7 +5,6 @@ import asyncio
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker
-from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import db.models  # noqa: F401
@@ -128,18 +127,10 @@ async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize the database by creating all tables."""
+    """Initialize the database by creating all tables.
+    Schema is managed by Alembic - run 'alembic upgrade head' separately.
+    """
     await wait_for_db()
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(SQLModel.metadata.create_all)
-            logger.info("Database tables created")
-    except Exception:
-        if settings.DEBUG:
-            logger.exception("Error initializing database")
-        else:
-            logger.error("Error initializing database")
-        raise
 
 
 async def close_db() -> None:

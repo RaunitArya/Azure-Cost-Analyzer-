@@ -83,6 +83,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dotenv" },
     { name = "sqlmodel" },
     { name = "uvicorn" },
 ]
@@ -109,6 +110,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.2" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "sqlmodel", specifier = ">=0.0.32" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]

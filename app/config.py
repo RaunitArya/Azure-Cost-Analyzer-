@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import Field, PostgresDsn
+from pydantic import Field, PostgresDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 from loguru import logger
@@ -79,6 +79,29 @@ class Settings(BaseSettings):
     # Database configuration
     DATABASE_URL: PostgresDsn = Field(...)
 
+    # Scheduler configuration
+    ENABLE_SCHEDULER: bool = Field(
+        default=True, description="Enable background job scheduler"
+    )
+    DAILY_COST_HOUR: int = Field(
+        default=0, ge=0, le=23, description="Hour to fetch daily costs (0-23 hr)"
+    )
+    DAILY_COST_MINUTE: int = Field(
+        default=0, ge=0, le=59, description="Minutes to fetch daily costs (0-59 min)"
+    )
+    SERVICE_COST_HOUR: int = Field(
+        default=0,
+        ge=0,
+        le=23,
+        description="Hours between service cost fetches (0-23 hr)",
+    )
+    SERVICE_COST_MINUTE: int = Field(
+        default=0,
+        ge=0,
+        le=59,
+        description="Minutes between service cost fetches (0-59 min)",
+    )
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""
@@ -108,6 +131,25 @@ class Settings(BaseSettings):
     def database_url_string(self) -> str:
         """Get DATABASE_URL as string for SQLAlchemy."""
         return str(self.DATABASE_URL)
+
+    @model_validator(mode="after")
+    def validate_minutes(self):
+        if (
+            getattr(self, "DAILY_COST_HOUR", 0) == 0
+            and getattr(self, "DAILY_COST_MINUTE", 0) == 0
+        ):
+            raise ValueError(
+                "DAILY_COST_HOUR and DAILY_COST_MINUTE cannot both be zero. This would cause the scheduler to run infinitely."
+            )
+
+        if (
+            getattr(self, "SERVICE_COST_HOUR", 0) == 0
+            and getattr(self, "SERVICE_COST_MINUTE", 0) == 0
+        ):
+            raise ValueError(
+                "SERVICE_COST_HOUR and SERVICE_COST_MINUTE cannot both be zero. This would cause the scheduler to run infinitely."
+            )
+        return self
 
 
 settings = Settings()

@@ -13,6 +13,12 @@ from db.database import init_db, close_db, get_session_context
 
 from handlers.exception_handlers import register_exception_handlers
 
+from scheduler import (
+    get_scheduler_status,
+    shutdown_scheduler,
+    start_scheduler,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,10 +32,23 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized successfully")
 
+    if settings.ENABLE_SCHEDULER:
+        logger.info("Starting background scheduler...")
+        start_scheduler()
+        logger.info("Background scheduler started")
+    else:
+        logger.info("Background scheduler disabled (ENABLE_SCHEDULER=false)")
+
     yield
 
     # Shutdown
     logger.info("Shutting down Azure Cost Analyzer API...")
+
+    if settings.ENABLE_SCHEDULER:
+        logger.info("Stopping background scheduler...")
+        shutdown_scheduler()
+        logger.info("Background scheduler stopped")
+
     logger.info("Closing database connections...")
     await close_db()
     logger.info("Database connections closed")
@@ -99,6 +118,15 @@ async def health_check():
         response["environment"] = settings.ENVIRONMENT.value
 
     return response
+
+
+@app.get("/status", tags=["scheduler"])
+async def scheduler_status():
+    """
+    Get current scheduler status and job information.
+    Shows when jobs will run next.
+    """
+    return get_scheduler_status()
 
 
 if __name__ == "__main__":

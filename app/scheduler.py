@@ -1,18 +1,14 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from config import settings
-from db.database import get_session_context
 from db.operations import (
-    get_or_create_billing_period,
     save_daily_costs,
     save_service_costs,
 )
 from loguru import logger
 from services.cost_preprocessor import (
-    get_current_month_period,
-    normalize_cost_response,
     preprocess_daily_costs,
     preprocess_service_costs,
 )
@@ -20,7 +16,7 @@ from services.cost_service import (
     fetch_last_7_days_cost,
     fetch_month_to_date_cost_by_service,
 )
-
+from services.cost_tasks import fetch_process_save
 
 # Global scheduler instance
 scheduler: AsyncIOScheduler | None = None
@@ -34,33 +30,18 @@ async def fetch_and_save_daily_costs() -> None:
     logger.info("Starting scheduled job: fetch_and_save_daily_costs")
 
     try:
-        # Fetch from Azure
-        raw_result = await fetch_last_7_days_cost()
-        normalized_data = normalize_cost_response(raw_result)
-        billing_start, billing_end = get_current_month_period()
-
-        # Process data
-        processed_records = preprocess_daily_costs(
-            normalized_data, billing_start, billing_end
+        _, _, saved_count = await fetch_process_save(
+            fetch_last_7_days_cost, preprocess_daily_costs, save_daily_costs
         )
 
-        # Save to database
-        async with get_session_context() as session:
-            billing_period = await get_or_create_billing_period(
-                session, billing_start, billing_end
-            )
-            saved_count = await save_daily_costs(
-                session, billing_period.id, processed_records
-            )
-
-        duration = (datetime.now() - job_start).total_seconds()
+        duration: int | float = (datetime.now() - job_start).total_seconds()
         logger.info(
             f"Completed scheduled job: fetch_and_save_daily_costs "
             f"({saved_count} records saved in {duration:.2f}s)"
         )
 
     except Exception as e:
-        duration = (datetime.now() - job_start).total_seconds()
+        duration: int | float = (datetime.now() - job_start).total_seconds()
         logger.error(
             f"Failed scheduled job: fetch_and_save_daily_costs "
             f"(duration: {duration:.2f}s, error: {e})"
@@ -75,33 +56,20 @@ async def fetch_and_save_service_costs() -> None:
     logger.info("Starting scheduled job: fetch_and_save_service_costs")
 
     try:
-        # Fetch from Azure
-        raw_result = await fetch_month_to_date_cost_by_service()
-        normalized_data = normalize_cost_response(raw_result)
-        billing_start, billing_end = get_current_month_period()
-
-        # Process data
-        processed_records = preprocess_service_costs(
-            normalized_data, billing_start, billing_end
+        _, _, saved_count = await fetch_process_save(
+            fetch_month_to_date_cost_by_service,
+            preprocess_service_costs,
+            save_service_costs,
         )
 
-        # Save to database
-        async with get_session_context() as session:
-            billing_period = await get_or_create_billing_period(
-                session, billing_start, billing_end
-            )
-            saved_count = await save_service_costs(
-                session, billing_period.id, processed_records
-            )
-
-        duration = (datetime.now() - job_start).total_seconds()
+        duration: int | float = (datetime.now() - job_start).total_seconds()
         logger.info(
             f"Completed scheduled job: fetch_and_save_service_costs "
             f"({saved_count} records saved in {duration:.2f}s)"
         )
 
     except Exception as e:
-        duration = (datetime.now() - job_start).total_seconds()
+        duration: int | float = (datetime.now() - job_start).total_seconds()
         logger.error(
             f"Failed scheduled job: fetch_and_save_service_costs "
             f"(duration: {duration:.2f}s, error: {e})"

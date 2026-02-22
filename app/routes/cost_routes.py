@@ -1,12 +1,9 @@
 from fastapi import APIRouter
-from db.database import get_session_context
 from db.operations import (
-    get_or_create_billing_period,
     save_daily_costs,
     save_service_costs,
 )
 from services.cost_preprocessor import (
-    get_current_month_period,
     normalize_cost_response,
     preprocess_daily_costs,
     preprocess_service_costs,
@@ -15,6 +12,7 @@ from services.cost_service import (
     fetch_last_7_days_cost,
     fetch_month_to_date_cost_by_service,
 )
+from services.cost_tasks import fetch_process_save
 
 router = APIRouter(prefix="/cost", tags=["cost"])
 
@@ -24,24 +22,13 @@ async def get_last_7_days_cost():
     """
     Get daily cost breakdown for the last 7 days with preprocessing.
     """
-    raw_result = await fetch_last_7_days_cost()
-    normalized_data = normalize_cost_response(raw_result)
-    billing_start, billing_end = get_current_month_period()
-
-    async with get_session_context() as session:
-        billing_period = await get_or_create_billing_period(
-            session, billing_start, billing_end
-        )
-
-    processed_records = preprocess_daily_costs(
-        normalized_data, billing_start, billing_end
+    processed_records, billing_period_id, saved_count = await fetch_process_save(
+        fetch_last_7_days_cost, preprocess_daily_costs, save_daily_costs
     )
-
-    saved_count = await save_daily_costs(session, billing_period.id, processed_records)
 
     return {
         "status": "success",
-        "billing_period_id": billing_period.id,
+        "billing_period_id": billing_period_id,
         "count": len(processed_records),
         "saved_to_db": saved_count,
         "data": [record.model_dump() for record in processed_records],
@@ -53,26 +40,15 @@ async def get_month_to_date_cost_by_service():
     """
     Get month-to-date costs grouped by Azure service with preprocessing.
     """
-    raw_result = await fetch_month_to_date_cost_by_service()
-    normalized_data = normalize_cost_response(raw_result)
-    billing_start, billing_end = get_current_month_period()
-
-    async with get_session_context() as session:
-        billing_period = await get_or_create_billing_period(
-            session, billing_start, billing_end
-        )
-
-    processed_records = preprocess_service_costs(
-        normalized_data, billing_start, billing_end
-    )
-
-    saved_count = await save_service_costs(
-        session, billing_period.id, processed_records
+    processed_records, billing_period_id, saved_count = await fetch_process_save(
+        fetch_month_to_date_cost_by_service,
+        preprocess_service_costs,
+        save_service_costs,
     )
 
     return {
         "status": "success",
-        "billing_period_id": billing_period.id,
+        "billing_period_id": billing_period_id,
         "count": len(processed_records),
         "saved_to_db": saved_count,
         "data": [record.model_dump() for record in processed_records],

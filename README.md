@@ -3,6 +3,14 @@
 ![Project Status](https://img.shields.io/badge/status-in%20progress-yellow)
 ![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
 
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi&logoColor=white)
+![Swagger](https://img.shields.io/badge/Swagger-85EA2D?logo=swagger&logoColor=173647)
+![Postgres](https://img.shields.io/badge/Postgres-4169E1?logo=postgresql&logoColor=white)
+![Azure SDK](https://custom-icon-badges.demolab.com/badge/Microsoft%20Azure-0089D6?logo=msazure&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=Pydantic&logoColor=white)
+![uv](https://img.shields.io/badge/uv-1A1A1A?logo=uv)
+
 ## 📌 Problem Description
 
 Developers often overspend on cloud; this tool: Fetches Azure VM, app service, DB cost Predicts monthly bill Shows per-service breakdown Alerts if budget exceeds a limit Suggests cost-optimization tips
@@ -47,7 +55,8 @@ Azure Cost Analyzer/
  │   └── cost_routes.py    # Cost API endpoints
  ├── services/             # Business logic and services
  │   ├── cost_preprocessor.py
- │   └── cost_service.py
+ │   ├── cost_service.py
+ |   └── cost_service.py   # cost data fetching & saving logic
  └── utils/
   └── responses.py         # Standardized API responses
 ```
@@ -83,51 +92,71 @@ python -m app/main.py
 
 ## 🛡️ Obtaining Azure Credentials
 
-To use this project, you need to register an Azure AD application and gather the following credentials:
+To use this project, you must have:
 
-1. **Log in to the Azure Portal**
+- An Azure Subscription
+- Billing Reader or Cost Management Reader role on that subscription
+- Owner access (only once, to set things up)
+
+### **Step 1: Log in to the Azure Portal**
 
 - Go to <https://portal.azure.com/>
 
-1. **Register an Application (App Registration)**
+### **Step 2: Register an Application (App Registration)**
 
-- Navigate to "Azure Active Directory" > "App registrations" > "New registration".
-- Enter a name, select supported account types, and register.
+- Navigate to "Microsoft Entra ID (Azure AD)" → "App registrations" → "New registration".
+- Enter a name (eg: cost-analyzer)
+- Supported account types:
+Choose
 
-1. **Get the Application (client) ID**
+  ```
+  Accounts in this organizational directory only (Single tenant)
+  ```
 
-- After registration, copy the **Application (client) ID** from the app overview.
+- Click Register.
 
-1. **Get the Directory (tenant) ID**
+### Step 3: Copy important IDs
 
-- Copy the **Directory (tenant) ID** from the app overview.
+  After registration, you land on **Overview page**.
 
-1. **Create a Client Secret**
+  Copy and save these safely:
 
-- Go to "Certificates & secrets" > "New client secret".
+  | Field | What it is |
+  | --- | --- |
+  | **Application (client) ID** | App’s username |
+  | **Directory (tenant) ID** | Your Azure organization |
+  | **Object ID** | Internal Azure reference |
+
+  You will use:
+
+  Put them in a `.env` file later.
+
+### **Step 4: Create a Client Secret**
+
+- Go to "Certificates & secrets" → "New client secret".
 - Add a description and expiry, then click "Add".
 - Copy the generated **Value** (this is your `AZURE_CLIENT_SECRET`).
 
-1. **Get Your Subscription ID**
+### **Step 5: Get Your Subscription ID**
 
 - In the Azure Portal, search for "Subscriptions".
 - Select your subscription and copy the **Subscription ID**.
 
-1. **Get the Object ID**
+### **Step 6: Assign Cost Management Reader Role to the App**
 
-- In the App Registration overview, copy the **Object ID** (sometimes called Application Object ID).
+- Go to Subscriptions → "Access control (IAM)" → "Add role assignment".
+- You'll see a long list of roles. Search for "Cost Management Reader" role → Click Next.
+- Select your app (Service Principal):<br>
+  i) search by app name or client id<br>
+  ii) select it → click Select → click Next
 
-1. **Assign Required Permissions**
+### **Step 7: Review and Assign**
 
-- Go to "API permissions" > "Add a permission" > "APIs my organization uses" > search for and add required Azure APIs (e.g., Cost Management, Resource Management).
-- Grant admin consent if needed.
-
-1. **Assign Roles to the App**
-
-- Go to your subscription/resource group/resource > "Access control (IAM)" > "Add role assignment".
-- Assign roles like "Reader" or "Cost Management Reader" to your registered app.
-
-Use these values in your `.env` file as shown below.
+- Review details:<br>
+    i) Role: Cost Management Reader<br>
+    ii) Scope: Subscription<br>
+    iii) Member: Your app<br>
+- Click **Assign**
 
 ## ⚙️ Environment variables (.env)
 
@@ -148,4 +177,11 @@ AZURE_SUBSCRIPTION_ID=<azure_subscription_id>
 
 # Postgres
 DATABASE_URL=<database_url>
+
+# Scheduler Configuration
+ENABLE_SCHEDULER=true|false
+DAILY_COST_HOUR=<daily_cost_hour>
+DAILY_COST_MINUTE=<daily_cost_minute>
+SERVICE_COST_HOUR=<service_cost_hour>
+SERVICE_COST_MINUTE=<service_cost_minute>
 ```

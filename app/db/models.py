@@ -40,6 +40,9 @@ class AzureService(SQLModel, table=True):
     service_costs: list["ServiceCost"] = Relationship(
         back_populates="service", cascade_delete=True
     )
+    daily_costs: list["DailyCost"] = Relationship(
+        back_populates="service", cascade_delete=True
+    )
 
 
 class BillingPeriod(SQLModel, table=True):
@@ -122,13 +125,15 @@ class DailyCost(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint(
             "usage_date",
+            "service_id",
             "billing_period_id",
-            name="uq_daily_cost_date_period",
+            name="uq_daily_cost_date_service_period",
         ),
         CheckConstraint("cost_amount >= 0", name="ck_daily_cost_amount_positive"),
         CheckConstraint("LENGTH(currency_code) = 3", name="ck_currency_code_length"),
         Index("idx_daily_cost_usage_date", "usage_date", postgresql_using="btree"),
         Index("idx_daily_cost_billing_period", "billing_period_id"),
+        Index("idx_daily_cost_service_date", "service_id", "usage_date"),
     )
 
     id: int | None = Field(
@@ -137,6 +142,11 @@ class DailyCost(SQLModel, table=True):
     currency_code: str = Field(
         sa_column=Column(String(3), nullable=False),
         description="ISO 4217 currency code, e.g. USD, INR",
+    )
+    service_id: int = Field(
+        foreign_key="azure_service.id",
+        ondelete="CASCADE",
+        nullable=False,
     )
     billing_period_id: int = Field(
         foreign_key="billing_period.id",
@@ -155,3 +165,4 @@ class DailyCost(SQLModel, table=True):
 
     # relationships
     billing_period: BillingPeriod = Relationship(back_populates="daily_costs")
+    service: AzureService = Relationship(back_populates="daily_costs")

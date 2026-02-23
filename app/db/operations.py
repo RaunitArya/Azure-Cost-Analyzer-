@@ -134,6 +134,7 @@ async def upsert_service_cost(
 
 async def upsert_daily_cost(
     session: AsyncSession,
+    service_id: int | None,
     billing_period_id: int | None,
     usage_date: datetime,
     cost_amount: Decimal,
@@ -142,6 +143,7 @@ async def upsert_daily_cost(
     """Insert or update a daily cost record."""
     statement = select(DailyCost).where(
         DailyCost.usage_date == usage_date,
+        DailyCost.service_id == service_id,
         DailyCost.billing_period_id == billing_period_id,
     )
     result = await session.exec(statement)
@@ -154,6 +156,7 @@ async def upsert_daily_cost(
         return existing
 
     record = DailyCost(
+        service_id=service_id,
         billing_period_id=billing_period_id,
         usage_date=usage_date,
         cost_amount=cost_amount,
@@ -210,8 +213,12 @@ async def save_daily_costs(
     saved = 0
     try:
         for record in records:
+            service = await get_or_create_azure_service(
+                session, record.service_name, getattr(record, "service_category", None)
+            )
             await upsert_daily_cost(
                 session=session,
+                service_id=service.id,
                 billing_period_id=billing_period_id,
                 usage_date=record.usage_date,
                 cost_amount=record.cost,

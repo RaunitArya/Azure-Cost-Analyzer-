@@ -71,6 +71,10 @@ def _fetch_last_7_days_cost_sync():
         dataset=QueryDataset(
             granularity="Daily",
             aggregation={"totalCost": QueryAggregation(name="Cost", function="Sum")},
+            grouping=[
+                QueryGrouping(type="Dimension", name="ServiceName"),
+                QueryGrouping(type="Dimension", name="ServiceFamily"),
+            ],
         ),
     )
 

@@ -69,6 +69,8 @@ class DailyCostRecord(BaseModel):
         validate_assignment=True,
     )
 
+    service_name: str
+    service_category: str | None = Field(default=None)
     usage_date: datetime
     cost: Decimal = Field(ge=0)
     currency: str = Field(default="INR")
@@ -81,6 +83,12 @@ class DailyCostRecord(BaseModel):
     def round_cost(cls, v: Any) -> Decimal:
         """Round cost to 2 decimal places"""
         return validate_cost_amount(v)
+
+    @field_validator("service_name")
+    @classmethod
+    def validate_service_name(cls, v: str) -> str:
+        """Store service names as-is from Azure"""
+        return v.strip() if v else "Unknown"
 
     @field_validator("currency")
     @classmethod

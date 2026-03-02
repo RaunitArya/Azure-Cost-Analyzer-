@@ -49,7 +49,6 @@ class BillingPeriod(SQLModel, table=True):
     __tablename__ = "billing_period"
     __table_args__ = (
         UniqueConstraint("start_date", "end_date", name="uq_billing_period_dates"),
-        Index("idx_billing_period_current", "is_current", unique=True),
     )
 
     id: int | None = Field(

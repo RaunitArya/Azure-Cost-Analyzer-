@@ -461,13 +461,17 @@ def _send_alert_email_sync(events: list[AlertEvent]) -> None:
 
     lines = [
         "The following Azure service cost thresholds have been breached:\n",
-        f"{'Service ID':<14} {'Period':<10} {'Date':<12} {'Current Cost':>14} "
+        f"{'Service':<30} {'Period':<10} {'Date':<12} {'Current Cost':>14} "
         f"{'Threshold':>12} {'Winning Rule':<15}",
-        "-" * 80,
+        "-" * 85,
     ]
     for e in events:
+        try:
+            service_name = e.service.name
+        except Exception:
+            service_name = f"service_id={e.service_id}"
         lines.append(
-            f"{e.service_id:<14} {e.period_type.value:<10} {str(e.reference_date):<12} "
+            f"{service_name:<30} {e.period_type.value:<10} {str(e.reference_date):<12} "
             f"{float(e.current_cost):>14.2f} {float(e.computed_threshold):>12.2f} "
             f"{e.winning_component:<15}"
         )

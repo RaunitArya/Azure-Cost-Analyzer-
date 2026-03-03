@@ -38,7 +38,7 @@ def upgrade() -> None:
         sa.Column("service_id", sa.Integer(), nullable=False),
         sa.Column(
             "period_type",
-            sa.Enum("DAILY", "MONTHLY", name="periodtype"),
+            sa.Enum("DAILY", "MONTHLY", name="periodtype", create_type=True),
             nullable=False,
         ),
         sa.Column(
@@ -62,7 +62,7 @@ def upgrade() -> None:
         sa.Column("service_id", sa.Integer(), nullable=False),
         sa.Column(
             "period_type",
-            sa.Enum("DAILY", "MONTHLY", name="periodtype"),
+            sa.Enum("DAILY", "MONTHLY", name="periodtype", create_type=False),
             nullable=False,
         ),
         sa.Column("reference_date", sa.Date(), nullable=False),

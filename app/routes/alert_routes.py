@@ -12,6 +12,7 @@ from db.alert_operations import (
     deactivate_threshold,
     get_anomaly_settings,
     list_alert_events,
+    list_anomaly_logs,
     get_thresholds,
     update_anomaly_settings,
     update_threshold,
@@ -24,6 +25,7 @@ from models.alert_models import (
     AlertThresholdCreate,
     AlertThresholdRead,
     AlertThresholdUpdate,
+    AnomalyLogRead,
     AnomalySettingsRead,
     AnomalySettingsUpdate,
 )
@@ -268,6 +270,36 @@ async def get_alert_settings(
         "status": "success",
         "data": AnomalySettingsRead.model_validate(row).model_dump(),
     }
+
+
+# Anomaly log endpoint
+
+
+@router.get("/anomaly-logs")
+async def list_anomaly_log_records(
+    service_id: int | None = Query(default=None, description="Filter by service ID"),
+    period_type: PeriodType | None = Query(
+        default=None, description="Filter by period type: daily | monthly"
+    ),
+    is_alert_fired: bool | None = Query(
+        default=None, description="Filter by whether an alert was fired"
+    ),
+    limit: int = Query(default=100, ge=1, le=500, description="Max records to return"),
+    offset: int = Query(default=0, ge=0, description="Pagination offset"),
+    session: AsyncSession = Depends(get_session),
+):
+    """List anomaly detection log entries. Includes both fired and non-fired detections.
+    Use is_alert_fired=true to see only breaches, false to see normal evaluations."""
+    logs = await list_anomaly_logs(
+        session,
+        service_id=service_id,
+        period_type=period_type,
+        is_alert_fired=is_alert_fired,
+        limit=limit,
+        offset=offset,
+    )
+    data = [AnomalyLogRead.model_validate(log).model_dump() for log in logs]
+    return {"status": "success", "count": len(data), "data": data}
 
 
 @router.patch(

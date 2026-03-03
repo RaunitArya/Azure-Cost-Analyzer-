@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from db.models import (
     AlertEvent,
     AlertThreshold,
+    AnomalyLog,
     AnomalySettings,
     DailyCost,
     PeriodType,
@@ -229,6 +230,68 @@ async def get_daily_cost_history(
         )
     )
     return [row.cost_amount for row in result.all() if row.cost_amount is not None]
+
+
+# Anomaly log operations
+
+
+async def create_anomaly_log(
+    session: AsyncSession,
+    *,
+    service_id: int,
+    service_name: str,
+    period_type: PeriodType,
+    reference_date: date,
+    current_cost: Decimal,
+    absolute_component: Decimal | None,
+    statistical_component: Decimal | None,
+    percentage_component: Decimal | None,
+    computed_threshold: Decimal,
+    winning_component: str,
+    is_alert_fired: bool,
+    alert_event_id: int | None,
+) -> AnomalyLog:
+    """Persist an anomaly detection record regardless of whether an alert fired."""
+    log = AnomalyLog(
+        service_id=service_id,
+        service_name=service_name,
+        period_type=period_type,
+        reference_date=reference_date,
+        current_cost=current_cost,
+        absolute_component=absolute_component,
+        statistical_component=statistical_component,
+        percentage_component=percentage_component,
+        computed_threshold=computed_threshold,
+        winning_component=winning_component,
+        is_alert_fired=is_alert_fired,
+        alert_event_id=alert_event_id,
+    )
+    session.add(log)
+    await session.commit()
+    await session.refresh(log)
+    return log
+
+
+async def list_anomaly_logs(
+    session: AsyncSession,
+    *,
+    service_id: int | None = None,
+    period_type: PeriodType | None = None,
+    is_alert_fired: bool | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[AnomalyLog]:
+    """Return anomaly logs with optional filters, newest first."""
+    query = select(AnomalyLog).order_by(col(AnomalyLog.detected_at).desc())
+    if service_id is not None:
+        query = query.where(AnomalyLog.service_id == service_id)
+    if period_type is not None:
+        query = query.where(AnomalyLog.period_type == period_type)
+    if is_alert_fired is not None:
+        query = query.where(AnomalyLog.is_alert_fired == is_alert_fired)
+    query = query.offset(offset).limit(limit)
+    result = await session.exec(query)
+    return list(result.all())
 
 
 # Anomaly settings operations

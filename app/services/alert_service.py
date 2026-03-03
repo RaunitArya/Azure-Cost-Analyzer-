@@ -16,13 +16,21 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from config import settings
 from db.alert_operations import (
     create_alert_event,
+    create_anomaly_log,
     get_anomaly_settings,
     get_daily_cost_history,
     get_monthly_cost_history,
     get_open_alert,
     get_thresholds,
 )
-from db.models import AlertEvent, BillingPeriod, DailyCost, PeriodType, ServiceCost
+from db.models import (
+    AlertEvent,
+    AzureService,
+    BillingPeriod,
+    DailyCost,
+    PeriodType,
+    ServiceCost,
+)
 from exceptions.cost_exceptions import AlertError
 from models.alert_models import AlertEvaluationSummary, AlertEventRead
 
@@ -194,17 +202,6 @@ async def evaluate_thresholds(
 
     Returns an AlertEvaluationSummary describing what happened.
     """
-    try:
-        thresholds = await get_thresholds(session, period_type=period_type)
-    except Exception as exc:
-        err_msg = (
-            f"Failed to load thresholds: {exc}"
-            if settings.show_debug_info
-            else "Failed to load thresholds."
-        )
-        logger.error(err_msg)
-        raise AlertError(err_msg) from exc
-
     anomaly_cfg = await get_anomaly_settings(session)
     k = anomaly_cfg.k_value
     pct_buffer = anomaly_cfg.percentage_buffer
@@ -304,11 +301,32 @@ async def evaluate_thresholds(
 
             computed_threshold, winning_component = effective
 
-            # 4. Skip if current cost does not breach
+            # 4. Resolve service name for anomaly log
+            service_obj = await session.get(AzureService, service_id)
+            service_name = (
+                service_obj.name if service_obj else f"service_id={service_id}"
+            )
+
+            # 5. Skip if current cost does not breach — log as non-alert detection
             if current_cost <= computed_threshold:
+                await create_anomaly_log(
+                    session,
+                    service_id=service_id,
+                    service_name=service_name,
+                    period_type=period_type,
+                    reference_date=ref_date,
+                    current_cost=current_cost,
+                    absolute_component=absolute_component,
+                    statistical_component=statistical_component,
+                    percentage_component=percentage_component,
+                    computed_threshold=computed_threshold,
+                    winning_component=winning_component,
+                    is_alert_fired=False,
+                    alert_event_id=None,
+                )
                 continue
 
-            # 5. Dedup — skip if an open alert already exists
+            # 6. Dedup — skip if an open alert already exists
             existing_open = await get_open_alert(session, service_id, period_type)
             if existing_open is not None:
                 logger.debug(
@@ -318,7 +336,7 @@ async def evaluate_thresholds(
                 skipped_open_alert += 1
                 continue
 
-            # 6. Create the alert event
+            # 7. Create the alert event
             logger.warning(
                 f"ALERT BREACH — service_id={service_id} period_type={period_type.value} "
                 f"current_cost={current_cost} > computed_threshold={computed_threshold} "
@@ -326,7 +344,7 @@ async def evaluate_thresholds(
             )
             event = await create_alert_event(
                 session,
-                threshold_id=threshold.id,  # type: ignore[arg-type]  # id set after first commit
+                threshold_id=threshold.id,  # type: ignore[arg-type]
                 service_id=service_id,
                 period_type=period_type,
                 reference_date=ref_date,
@@ -336,6 +354,23 @@ async def evaluate_thresholds(
                 statistical_component=statistical_component,
                 percentage_component=percentage_component,
                 winning_component=winning_component,
+            )
+
+            # 8. Log the breach
+            await create_anomaly_log(
+                session,
+                service_id=service_id,
+                service_name=service_name,
+                period_type=period_type,
+                reference_date=ref_date,
+                current_cost=current_cost,
+                absolute_component=absolute_component,
+                statistical_component=statistical_component,
+                percentage_component=percentage_component,
+                computed_threshold=computed_threshold,
+                winning_component=winning_component,
+                is_alert_fired=True,
+                alert_event_id=event.id,
             )
             new_alert_events.append(event)
             breaches += 1

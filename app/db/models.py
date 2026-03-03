@@ -13,6 +13,7 @@ from sqlalchemy import (
     Boolean,
     Enum as SAEnum,
 )
+from typing import Optional
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -56,6 +57,9 @@ class AzureService(SQLModel, table=True):
         back_populates="service", cascade_delete=True
     )
     alert_events: list["AlertEvent"] = Relationship(
+        back_populates="service", cascade_delete=True
+    )
+    anomaly_logs: list["AnomalyLog"] = Relationship(
         back_populates="service", cascade_delete=True
     )
 
@@ -132,6 +136,86 @@ class ServiceCost(SQLModel, table=True):
     # relationships
     billing_period: BillingPeriod = Relationship(back_populates="service_costs")
     service: AzureService = Relationship(back_populates="service_costs")
+
+
+class AnomalyLog(SQLModel, table=True):
+    """Audit record of every anomaly detection run per service per evaluation.
+
+    Written for every service that has a computable threshold, regardless of
+    whether an AlertEvent was fired. Use is_alert_fired to distinguish.
+    """
+
+    __tablename__ = "anomaly_log"
+    __table_args__ = (
+        Index("idx_anomaly_log_service_period", "service_id", "period_type"),
+        Index("idx_anomaly_log_detected_at", "detected_at"),
+        Index("idx_anomaly_log_is_alert_fired", "is_alert_fired"),
+    )
+
+    id: int | None = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    service_id: int = Field(
+        foreign_key="azure_service.id",
+        ondelete="CASCADE",
+        nullable=False,
+    )
+    service_name: str = Field(
+        sa_column=Column(String(255), nullable=False),
+        description="Denormalized service name for fast querying without joins.",
+    )
+    period_type: PeriodType = Field(
+        sa_column=Column(
+            SAEnum(PeriodType, name="periodtype", create_type=False),
+            nullable=False,
+        )
+    )
+    reference_date: date = Field(
+        nullable=False,
+        description="usage_date for daily; first day of billing month for monthly.",
+    )
+    current_cost: Decimal = Field(
+        sa_column=Column(DECIMAL(15, 2), nullable=False),
+    )
+    absolute_component: Decimal | None = Field(
+        default=None,
+        sa_column=Column(DECIMAL(15, 2), nullable=True),
+    )
+    statistical_component: Decimal | None = Field(
+        default=None,
+        sa_column=Column(DECIMAL(15, 2), nullable=True),
+    )
+    percentage_component: Decimal | None = Field(
+        default=None,
+        sa_column=Column(DECIMAL(15, 2), nullable=True),
+    )
+    computed_threshold: Decimal = Field(
+        sa_column=Column(DECIMAL(15, 2), nullable=False),
+        description="max() of non-None components.",
+    )
+    winning_component: str = Field(
+        sa_column=Column(String(20), nullable=False),
+    )
+    is_alert_fired: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, default=False),
+        description="True if an AlertEvent was created for this detection.",
+    )
+    alert_event_id: int | None = Field(
+        default=None,
+        foreign_key="alert_event.id",
+        ondelete="SET NULL",
+        nullable=True,
+        description="FK to AlertEvent if is_alert_fired=True, else None.",
+    )
+    detected_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        default_factory=_utcnow,
+    )
+
+    # relationships
+    service: AzureService = Relationship(back_populates="anomaly_logs")
+    alert_event: Optional["AlertEvent"] = Relationship(back_populates="anomaly_log")
 
 
 class DailyCost(SQLModel, table=True):
@@ -307,6 +391,7 @@ class AlertEvent(SQLModel, table=True):
     # relationships
     threshold: AlertThreshold = Relationship(back_populates="alert_events")
     service: AzureService = Relationship(back_populates="alert_events")
+    anomaly_log: Optional["AnomalyLog"] = Relationship(back_populates="alert_event")
 
 
 class AnomalySettings(SQLModel, table=True):

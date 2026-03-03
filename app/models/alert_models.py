@@ -90,6 +90,27 @@ class AlertEventRead(BaseModel):
     triggered_at: datetime
 
 
+class AnomalyLogRead(BaseModel):
+    """Read model for an anomaly detection log entry."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    service_name: str
+    period_type: PeriodType
+    reference_date: date
+    current_cost: Decimal
+    absolute_component: Decimal | None
+    statistical_component: Decimal | None
+    percentage_component: Decimal | None
+    computed_threshold: Decimal
+    winning_component: str
+    is_alert_fired: bool
+    alert_event_id: int | None
+    detected_at: datetime
+
+
 class AnomalySettingsRead(BaseModel):
     """Full representation of global anomaly detection settings."""
 

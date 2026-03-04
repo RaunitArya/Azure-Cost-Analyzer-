@@ -270,7 +270,6 @@ async def trigger_alert_evaluation(
 
 @router.get(
     "/settings",
-    response_model=AnomalySettingsRead,
     summary="Get global anomaly detection settings",
 )
 async def get_alert_settings(
@@ -325,7 +324,6 @@ async def list_anomaly_log_records(
 
 @router.patch(
     "/settings",
-    response_model=AnomalySettingsRead,
     summary="Update global anomaly detection settings",
 )
 async def update_alert_settings(

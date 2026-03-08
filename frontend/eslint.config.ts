@@ -7,7 +7,10 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    ignores: ["dist"],
+    // Ignore build output and auto-generated shadcn/ui components.
+    // The ui/ folder is managed by the shadcn CLI and intentionally
+    // exports both components and constants from the same file.
+    ignores: ["dist", "src/components/ui/**"],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

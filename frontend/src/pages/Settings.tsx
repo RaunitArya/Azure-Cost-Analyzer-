@@ -34,8 +34,10 @@ const TRIGGER_LABELS: Record<AlertTrigger, string> = {
 function loadAlertSettings(): AlertSettings {
   try {
     const raw = localStorage.getItem("azure-alert-settings");
-    if (raw) return JSON.parse(raw);
-  } catch {}
+    if (raw) return JSON.parse(raw) as AlertSettings;
+  } catch (_err) {
+    // localStorage unavailable or JSON malformed — use defaults
+  }
   return {
     email: "",
     budgetThreshold: Number(localStorage.getItem("azure-budget")) || 0,
@@ -51,11 +53,15 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
 
-  // Sync budget from dashboard
+  // Sync the dashboard budget into the threshold field on first mount.
+  // The functional-update form of setSettings receives latest state as `s`,
+  // so this effect never reads settings directly — empty deps is correct.
   useEffect(() => {
     const budget = Number(localStorage.getItem("azure-budget")) || 0;
-    if (budget > 0 && settings.budgetThreshold === 0) {
-      setSettings((s) => ({ ...s, budgetThreshold: budget }));
+    if (budget > 0) {
+      setSettings((s) =>
+        s.budgetThreshold === 0 ? { ...s, budgetThreshold: budget } : s,
+      );
     }
   }, []);
 
@@ -81,10 +87,10 @@ export default function Settings() {
         title: "✓ Alert settings saved",
         description: `Alerts will be sent to ${settings.email}`,
       });
-    } catch (e: any) {
+    } catch (err) {
       toast({
         title: "Failed to save settings",
-        description: e.message,
+        description: err instanceof Error ? err.message : "Unknown error",
         variant: "destructive",
       });
     } finally {
@@ -248,22 +254,6 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
-
-        <p className="text-center text-xs text-muted-foreground">
-          API URL: <span className="font-mono text-foreground">{apiUrl}</span>
-          {" — "}
-          <span className="text-muted-foreground">
-            Change via{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
-              VITE_API_URL
-            </code>{" "}
-            in your{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
-              .env
-            </code>{" "}
-            file.
-          </span>
-        </p>
       </div>
     </div>
   );

@@ -19,8 +19,24 @@ export async function fetchCostData(
   const res = await fetch(url.toString(), { headers: defaultHeaders });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
 
-  const json = await res.json();
-  const data = (json.data ?? []).map((r: any) => ({
+  interface RawRecord {
+    service_name: string;
+    service_category: string;
+    cost: number;
+    currency: string;
+    usage_date?: string;
+    date?: string;
+    billing_period_start?: string;
+  }
+
+  interface RawResponse {
+    data?: RawRecord[];
+    total_cost?: number;
+    currency?: string;
+  }
+
+  const json = (await res.json()) as RawResponse;
+  const data = (json.data ?? []).map((r) => ({
     service_name: r.service_name,
     service_category: r.service_category,
     cost: r.cost,
@@ -35,7 +51,7 @@ export async function fetchCostData(
   return {
     data,
     total_cost:
-      json.total_cost ?? data.reduce((s: number, r: any) => s + r.cost, 0),
+      json.total_cost ?? data.reduce((s, r) => s + r.cost, 0),
     currency: json.currency ?? data[0]?.currency ?? "INR",
   };
 }

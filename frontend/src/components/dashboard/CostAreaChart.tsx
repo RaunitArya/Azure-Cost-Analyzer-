@@ -1,6 +1,7 @@
 import { CostRecord } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart } from "@mui/x-charts/LineChart";
+import type { ShowMarkParams } from "@mui/x-charts/models"
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -39,8 +40,7 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
   );
   const showMark =
     yData.length > 1
-      ? (_value: number, params?: { dataIndex: number }) =>
-          params ? spikeIndices.has(params.dataIndex) : false
+      ? (params: ShowMarkParams) => spikeIndices.has(params.index)
       : false;
 
   return (
@@ -111,7 +111,7 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
                   data: yData,
                   area: true,
                   color: "#3B82F6",
-                  showMark: showMark as any,
+                  showMark,
                 },
               ]}
               sx={{

@@ -26,8 +26,10 @@ interface StatCardsProps {
 function getAlertSettings(): AlertSettings | null {
   try {
     const raw = localStorage.getItem("azure-alert-settings");
-    if (raw) return JSON.parse(raw);
-  } catch {}
+    if (raw) return JSON.parse(raw) as AlertSettings;
+  } catch (_err) {
+    // localStorage unavailable or JSON malformed — return null
+  }
   return null;
 }
 

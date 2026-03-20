@@ -108,6 +108,14 @@ async def deactivate_threshold(
     session.add(threshold)
     await session.commit()
     await session.refresh(threshold)
+    open_incident = await get_open_incident(
+        session, threshold.service_id, threshold.period_type
+    )
+    if open_incident is not None:
+        open_incident.status = "resolved"
+        open_incident.breach_resolved_at = datetime.now(timezone.utc)
+        session.add(open_incident)
+        await session.commit()
     return threshold
 
 

@@ -331,8 +331,12 @@ export default function Budget() {
     setDeactivatingId(id);
     try {
       await deactivateAlertThreshold(id);
-      queryClient.invalidateQueries({ queryKey: ["alert-thresholds"] });
-      toast({ title: "✓ Threshold deactivated" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["alert-thresholds"] }),
+        queryClient.invalidateQueries({ queryKey: ["alert-events-open"] }),
+        queryClient.invalidateQueries({ queryKey: ["alert-events-history"] }),
+      ]);
+      toast({ title: "✓ Threshold deactivated", description: "Any open incident for this service has been resolved." });
     } catch (err) {
       toast({
         title: "Failed to deactivate",

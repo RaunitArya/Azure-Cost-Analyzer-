@@ -377,7 +377,7 @@ class AlertEvent(SQLModel, table=True):
     status: str = Field(
         default="open",
         sa_column=Column(String(20), nullable=False, default="open"),
-        description="open | resolved",
+        description="open | resolved  (resolved = cost dropped below threshold OR threshold was deactivated)",
     )
     breach_started_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),

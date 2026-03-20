@@ -324,11 +324,6 @@ class AlertThreshold(SQLModel, table=True):
 class AlertEvent(SQLModel, table=True):
     """One row per breach incident. Stays open for the entire duration of the
     breach. Updated in-place on each evaluation cycle while the breach persists.
-
-    Status lifecycle:
-        open        → breach is ongoing
-        acknowledged → user manually silenced the incident (cost may still be high)
-        resolved    → cost dropped back below threshold (auto-closed)
     """
 
     __tablename__ = "alert_event"
@@ -364,7 +359,6 @@ class AlertEvent(SQLModel, table=True):
         nullable=False,
         description="usage_date for daily; first day of billing month for monthly.",
     )
-    # Cost fields updated in-place on each evaluation cycle
     current_cost: Decimal = Field(
         sa_column=Column(DECIMAL(15, 2), nullable=False),
         description="Latest cost value observed during this incident.",
@@ -391,9 +385,8 @@ class AlertEvent(SQLModel, table=True):
     status: str = Field(
         default="open",
         sa_column=Column(String(20), nullable=False, default="open"),
-        description="open | acknowledged | resolved",
+        description="open | resolved",
     )
-    # Incident lifecycle timestamps
     breach_started_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
         default_factory=_utcnow,
@@ -404,12 +397,6 @@ class AlertEvent(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True),
         description="When cost dropped back below threshold (auto-resolved).",
     )
-    acknowledged_at: datetime | None = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True),
-        description="When the user manually acknowledged the incident.",
-    )
-    # Notification tracking
     last_notified_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
         default_factory=_utcnow,

@@ -216,16 +216,6 @@ export async function getAlertEvents(params?: {
   return json.data;
 }
 
-export async function acknowledgeAlertEvent(id: number): Promise<AlertEvent> {
-  const res = await fetch(`${base()}/alerts/events/${id}/acknowledge`, {
-    method: "POST",
-    headers: defaultHeaders,
-  });
-  if (!res.ok) throw new Error(`Failed to acknowledge alert: ${res.status}`);
-  const json = (await res.json()) as { data: AlertEvent };
-  return json.data;
-}
-
 export async function getAnomalyLogs(params?: {
   service_id?: number;
   period_type?: string;

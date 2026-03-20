@@ -100,11 +100,8 @@ class AlertEventRead(BaseModel):
     percentage_component: Decimal | None
     winning_component: str
     status: str
-    # Incident lifecycle
     breach_started_at: datetime
     breach_resolved_at: datetime | None
-    acknowledged_at: datetime | None
-    # Notification tracking
     last_notified_at: datetime
     notification_count: int
     cooldown_minutes: int

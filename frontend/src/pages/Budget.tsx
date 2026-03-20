@@ -36,7 +36,6 @@ import {
 import {
   Bell,
   Mail,
-  Check,
   AlertTriangle,
   Loader2,
   DollarSign,
@@ -60,7 +59,6 @@ import {
   getAlertSettings,
   updateAlertSettings,
   getAlertEvents,
-  acknowledgeAlertEvent,
   getAnomalyLogs,
   getAlertThresholds,
   getAlertServices,
@@ -173,7 +171,6 @@ export default function Budget() {
   const [globalCooldown, setGlobalCooldown] = useState<string>("120");
   const [savingDetection, setSavingDetection] = useState(false);
 
-  const [acknowledgingId, setAcknowledgingId] = useState<number | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -343,26 +340,6 @@ export default function Budget() {
       });
     } finally {
       setSavingDetection(false);
-    }
-  };
-
-  const handleAcknowledge = async (id: number) => {
-    setAcknowledgingId(id);
-    try {
-      await acknowledgeAlertEvent(id);
-      queryClient.invalidateQueries({ queryKey: ["alert-events-open"] });
-      toast({
-        title: "✓ Incident acknowledged",
-        description: "The incident has been manually closed.",
-      });
-    } catch (err) {
-      toast({
-        title: "Failed to acknowledge",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setAcknowledgingId(null);
     }
   };
 
@@ -835,21 +812,6 @@ export default function Budget() {
                         <Clock className="h-3 w-3" />
                         <span>{alert.cooldown_minutes}m cooldown</span>
                       </div>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full h-7 text-xs"
-                        disabled={acknowledgingId === alert.id}
-                        onClick={() => handleAcknowledge(alert.id)}
-                      >
-                        {acknowledgingId === alert.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <Check className="h-3 w-3 mr-1" />
-                        )}
-                        Acknowledge
-                      </Button>
                     </div>
                   ))}
                 </div>

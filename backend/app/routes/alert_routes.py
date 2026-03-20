@@ -6,7 +6,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from config import settings
 from db.alert_operations import (
-    acknowledge_alert,
     create_threshold,
     deactivate_threshold,
     get_anomaly_settings,
@@ -68,7 +67,6 @@ async def _enrich_event(event, session: AsyncSession) -> AlertEventRead:
         status=event.status,
         breach_started_at=event.breach_started_at,
         breach_resolved_at=event.breach_resolved_at,
-        acknowledged_at=event.acknowledged_at,
         last_notified_at=event.last_notified_at,
         notification_count=event.notification_count,
         cooldown_minutes=event.cooldown_minutes,
@@ -171,9 +169,7 @@ async def deactivate_alert_threshold(
 
 @router.get("/events", summary="List alert incidents")
 async def get_alert_events(
-    status: str | None = Query(
-        default=None, description="open | acknowledged | resolved"
-    ),
+    status: str | None = Query(default=None, description="open | resolved"),
     service_id: int | None = Query(default=None),
     period_type: PeriodType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -206,27 +202,6 @@ async def get_alert_events(
         )
         logger.error(err_msg)
         raise HTTPException(status_code=500, detail=err_msg)
-
-
-@router.post("/events/{alert_id}/acknowledge")
-async def acknowledge_alert_event(
-    alert_id: int,
-    session: AsyncSession = Depends(get_session),
-):
-    """Manually acknowledge an open incident."""
-    try:
-        event = await acknowledge_alert(session, alert_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc)
-            if not settings.is_production
-            else "Alert event not found or already closed.",
-        )
-    return {
-        "status": "success",
-        "data": (await _enrich_event(event, session)).model_dump(),
-    }
 
 
 @router.post("/evaluate")

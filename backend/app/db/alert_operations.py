@@ -227,25 +227,6 @@ async def resolve_incident(
     return incident
 
 
-async def acknowledge_alert(
-    session: AsyncSession,
-    alert_id: int,
-) -> AlertEvent:
-    """Manually acknowledge an open incident. Raises ValueError if not found
-    or already closed."""
-    event = await session.get(AlertEvent, alert_id)
-    if event is None:
-        raise ValueError(f"AlertEvent id={alert_id} not found.")
-    if event.status != "open":
-        raise ValueError(f"AlertEvent id={alert_id} is already '{event.status}'.")
-    event.status = "acknowledged"
-    event.acknowledged_at = datetime.now(timezone.utc)
-    session.add(event)
-    await session.commit()
-    await session.refresh(event)
-    return event
-
-
 def is_cooldown_elapsed(incident: AlertEvent) -> bool:
     """Return True if enough time has passed since the last notification
     to send another reminder email."""

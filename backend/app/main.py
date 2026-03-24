@@ -153,6 +153,6 @@ if __name__ == "__main__":
         "main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=settings.is_development,
+        reload=True,
         log_config=None,
     )

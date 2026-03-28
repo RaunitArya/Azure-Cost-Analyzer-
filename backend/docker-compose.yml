@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:18
+    container_name: cost_analyzer_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: cost_analyzer
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cost_analyzer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cost_analyzer_backend
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:1234@db:5432/cost_analyzer
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy

@@ -50,7 +50,10 @@ database_url = database_url.replace("postgresql+psycopg://", "postgresql+psycopg
 config = context.config
 
 # Set the database URL programmatically
-config.set_main_option("sqlalchemy.url", database_url)
+# configparser (used internally by alembic) treats % as an interpolation
+# character. Escape all % in the URL to %% before passing it in, otherwise
+# passwords containing % cause a ValueError at startup.
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Setup logging from alembic.ini
 if config.config_file_name is not None:

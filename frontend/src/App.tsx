@@ -7,6 +7,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import Budget from "./pages/Budget";
+import CostAnalysis from "./pages/CostAnalysis";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +30,9 @@ const App = () => (
                 <main className="flex-1 bg-background">
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/cost-analysis" element={<CostAnalysis />} />
                     <Route path="/budget" element={<Budget />} />
+                    <Route path="/reports" element={<Reports />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>

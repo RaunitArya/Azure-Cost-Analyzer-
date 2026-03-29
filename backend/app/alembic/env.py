@@ -27,15 +27,12 @@ from dotenv import load_dotenv
 # .env is two levels up from env.py: app/alembic/env.py -> project root
 env_file = Path(__file__).resolve().parent.parent.parent / ".env"
 
-if not env_file.exists():
-    raise FileNotFoundError(f".env file not found at: {env_file}")
-
-load_dotenv(env_file)
+if env_file.exists():
+    load_dotenv(env_file)
 
 database_url = os.getenv("DATABASE_URL")
-
 if not database_url:
-    raise ValueError("DATABASE_URL not found in .env file")
+    raise ValueError("DATABASE_URL is not set.")
 
 # Alembic runs synchronously (it's a CLI tool, not an async server).
 # psycopg3 async driver (postgresql+psycopg://) requires SelectorEventLoop

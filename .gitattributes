@@ -1,0 +1,12 @@
+# Always use LF for shell scripts — CRLF breaks them on Linux/Docker
+*.sh text eol=lf
+
+# Python files
+*.py text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.env text eol=lf

@@ -1,13 +1,13 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { FilterSettings, CostRecord } from "@/lib/types";
 import { getAlertThresholds, getAlertEvents } from "@/lib/api";
 import { useCostData } from "@/hooks/use-cost-data";
 import { ControlPanel } from "@/components/dashboard/ControlPanel";
-import { CostAreaChart } from "@/components/dashboard/CostAreaChart";
-import { CostBarChart } from "@/components/dashboard/CostBarChart";
-import { CostDonutChart } from "@/components/dashboard/CostDonutChart";
+import { MonthOverMonthChart } from "@/components/dashboard/Monthovermonthchart";
+import { CumulativeSpendChart } from "@/components/dashboard/CumulativeSpendChart";
+import { ServiceCostChangeChart } from "@/components/dashboard/Servicecostchangechart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,10 +34,7 @@ import {
 } from "lucide-react";
 import { getServiceColor } from "@/lib/colors";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const fmt = (v: number) =>
-  `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+const fmt = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -46,8 +43,6 @@ function formatDate(iso: string) {
     day: "2-digit",
   });
 }
-
-// ─── Summary Section ──────────────────────────────────────────────────────────
 
 interface SummaryRowProps {
   label: string;
@@ -63,18 +58,12 @@ function SummaryRow({ label, value, icon, highlight }: SummaryRowProps) {
         {icon}
         {label}
       </div>
-      <span
-        className={`text-sm font-semibold ${
-          highlight ? "text-primary" : "text-foreground"
-        }`}
-      >
+      <span className={`text-sm font-semibold ${highlight ? "text-primary" : "text-foreground"}`}>
         {value}
       </span>
     </div>
   );
 }
-
-// ─── Service Comparison Table ─────────────────────────────────────────────────
 
 interface ServiceStat {
   name: string;
@@ -112,8 +101,6 @@ function buildStats(records: CostRecord[]): ServiceStat[] {
     .sort((a, b) => b.totalCost - a.totalCost);
 }
 
-// ─── Export helpers ──────────────────────────────────────────────────────────
-
 function exportCSV(records: CostRecord[], filename: string) {
   const headers = ["Service", "Category", "Cost", "Currency", "Date"];
   const rows = records.map((r) => [
@@ -133,11 +120,7 @@ function exportCSV(records: CostRecord[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function exportJSON(
-  records: CostRecord[],
-  meta: Record<string, unknown>,
-  filename: string,
-) {
+function exportJSON(records: CostRecord[], meta: Record<string, unknown>, filename: string) {
   const blob = new Blob([JSON.stringify({ meta, data: records }, null, 2)], {
     type: "application/json",
   });
@@ -149,15 +132,14 @@ function exportJSON(
   URL.revokeObjectURL(url);
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 const Reports = () => {
+  // Blank dates by default — user must apply filters explicitly
   const [filters, setFilters] = useState<FilterSettings>({
-    granularity: "monthly",
+    granularity: "daily",
     groupBy: "service",
     budget: 0,
-    startDate: format(startOfMonth(new Date()), "yyyy-MM-dd"),
-    endDate: format(endOfMonth(new Date()), "yyyy-MM-dd"),
+    startDate: "",
+    endDate: "",
   });
 
   const { data, isLoading, isError } = useCostData(
@@ -192,39 +174,49 @@ const Reports = () => {
 
   const records = useMemo(() => {
     let items = data?.data ?? [];
-    if (filters.startDate)
-      items = items.filter((r) => r.date.slice(0, 10) >= filters.startDate);
-    if (filters.endDate)
-      items = items.filter((r) => r.date.slice(0, 10) <= filters.endDate);
+
+    if (filters.granularity === "daily") {
+      if (filters.startDate) items = items.filter((r) => r.date.slice(0, 10) >= filters.startDate);
+      if (filters.endDate) items = items.filter((r) => r.date.slice(0, 10) <= filters.endDate);
+    }
     return items;
-  }, [data, filters.startDate, filters.endDate]);
+  }, [data, filters.startDate, filters.endDate, filters.granularity]);
 
-  // ── derived ──────────────────────────────────────────────────────────────
-
-  const totalCost = useMemo(
-    () => records.reduce((s, r) => s + r.cost, 0),
-    [records],
-  );
+  const totalCost = useMemo(() => records.reduce((s, r) => s + r.cost, 0), [records]);
 
   const stats = useMemo(() => buildStats(records), [records]);
 
   const dateRange = useMemo(() => {
     if (!records.length) return "—";
     const dates = records.map((r) => r.date.slice(0, 10)).sort();
+    if (filters.granularity === "monthly") {
+      const fmtMonth = (d: string) =>
+        new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
+          month: "short",
+          year: "numeric",
+        });
+      return `${fmtMonth(dates[0])} – ${fmtMonth(dates[dates.length - 1])}`;
+    }
     return `${formatDate(dates[0])} – ${formatDate(dates[dates.length - 1])}`;
-  }, [records]);
+  }, [records, filters.granularity]);
 
   const uniqueDates = useMemo(
     () => new Set(records.map((r) => r.date.slice(0, 10))).size,
     [records],
   );
 
-  const budgetPct =
-    totalBudget > 0 ? Math.round((totalCost / totalBudget) * 100) : null;
+  const dataPointsLabel = useMemo(() => {
+    const unit =
+      filters.granularity === "monthly"
+        ? `${uniqueDates} month${uniqueDates !== 1 ? "s" : ""}`
+        : `${uniqueDates} day${uniqueDates !== 1 ? "s" : ""}`;
+    return `${records.length} records · ${unit}`;
+  }, [records.length, uniqueDates, filters.granularity]);
+
+  const budgetPct = totalBudget > 0 ? Math.round((totalCost / totalBudget) * 100) : null;
 
   const openAlerts = alertHistory.filter((e) => e.status === "open").length;
 
-  // half-period trend
   const trend = useMemo(() => {
     if (records.length < 2) return null;
     const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
@@ -297,12 +289,11 @@ const Reports = () => {
       <div className="mx-auto max-w-7xl space-y-6 px-6 pb-6">
         <ControlPanel filters={filters} onApplyFilters={handleApplyFilters} />
 
-        {/* ── Loading ── */}
         {isLoading && (
           <div className="space-y-6">
             <div className="grid gap-4 lg:grid-cols-3">
-              <Skeleton className="h-[240px] rounded-lg" />
-              <Skeleton className="h-[240px] rounded-lg lg:col-span-2" />
+              <Skeleton className="h-[300px] rounded-lg" />
+              <Skeleton className="h-[300px] rounded-lg lg:col-span-2" />
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <Skeleton className="h-[340px] rounded-lg" />
@@ -313,32 +304,23 @@ const Reports = () => {
           </div>
         )}
 
-        {/* ── Error ── */}
         {isError && !isLoading && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-destructive/40 py-16 text-center">
-            <WifiOff
-              className="h-10 w-10 text-destructive"
-              strokeWidth={1.5}
-            />
+            <WifiOff className="h-10 w-10 text-destructive" strokeWidth={1.5} />
             <p className="text-sm text-destructive">
               Failed to fetch data. Ensure your FastAPI backend is running.
             </p>
           </div>
         )}
 
-        {/* ── Data ── */}
         {data && !isLoading && (
           <>
-            {/* Top row: Summary + Area chart */}
+            {/* Row 1: Report Summary + Month-over-Month */}
             <div className="grid gap-4 lg:grid-cols-3">
-              {/* Report Summary Card */}
               <Card className="border-border bg-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <FileText
-                      className="h-4 w-4 text-primary"
-                      strokeWidth={1.5}
-                    />
+                    <FileText className="h-4 w-4 text-primary" strokeWidth={1.5} />
                     Report Summary
                   </CardTitle>
                   <p className="text-[11px] text-muted-foreground">
@@ -348,58 +330,36 @@ const Reports = () => {
                 <CardContent className="pb-4">
                   <SummaryRow
                     label="Date Range"
-                    icon={
-                      <Calendar
-                        className="h-3.5 w-3.5"
-                        strokeWidth={1.5}
-                      />
-                    }
+                    icon={<Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     value={dateRange}
                   />
                   <SummaryRow
                     label="Granularity"
-                    icon={
-                      <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    }
+                    icon={<Layers className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     value={
-                      filters.granularity.charAt(0).toUpperCase() +
-                      filters.granularity.slice(1)
+                      filters.granularity.charAt(0).toUpperCase() + filters.granularity.slice(1)
                     }
                   />
                   <SummaryRow
                     label="Total Cost"
-                    icon={
-                      <IndianRupee
-                        className="h-3.5 w-3.5"
-                        strokeWidth={1.5}
-                      />
-                    }
+                    icon={<IndianRupee className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     value={fmt(totalCost)}
                     highlight
                   />
                   <SummaryRow
                     label="Data Points"
-                    icon={
-                      <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    }
-                    value={`${records.length} records · ${uniqueDates} days`}
+                    icon={<Layers className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                    value={dataPointsLabel}
                   />
                   <SummaryRow
                     label="Services"
-                    icon={
-                      <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    }
+                    icon={<Layers className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     value={`${stats.length} active`}
                   />
                   {totalBudget > 0 && (
                     <SummaryRow
                       label="Budget Usage"
-                      icon={
-                        <IndianRupee
-                          className="h-3.5 w-3.5"
-                          strokeWidth={1.5}
-                        />
-                      }
+                      icon={<IndianRupee className="h-3.5 w-3.5" strokeWidth={1.5} />}
                       value={`${budgetPct}% of ${fmt(totalBudget)}`}
                       highlight={budgetPct != null && budgetPct > 80}
                     />
@@ -409,10 +369,7 @@ const Reports = () => {
                       label="Period Trend"
                       icon={
                         trend > 0 ? (
-                          <TrendingUp
-                            className="h-3.5 w-3.5 text-destructive"
-                            strokeWidth={1.5}
-                          />
+                          <TrendingUp className="h-3.5 w-3.5 text-destructive" strokeWidth={1.5} />
                         ) : (
                           <TrendingDown
                             className="h-3.5 w-3.5 text-emerald-400"
@@ -423,14 +380,10 @@ const Reports = () => {
                       value={`${trend > 0 ? "▲" : "▼"} ${Math.abs(trend)}%`}
                     />
                   )}
-                  {/* Alert status */}
                   <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
                     {openAlerts > 0 ? (
                       <>
-                        <AlertTriangle
-                          className="h-3.5 w-3.5 text-destructive"
-                          strokeWidth={1.5}
-                        />
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive" strokeWidth={1.5} />
                         <span className="text-xs text-destructive font-medium">
                           {openAlerts} active incident
                           {openAlerts !== 1 ? "s" : ""}
@@ -438,10 +391,7 @@ const Reports = () => {
                       </>
                     ) : (
                       <>
-                        <CheckCircle2
-                          className="h-3.5 w-3.5 text-emerald-400"
-                          strokeWidth={1.5}
-                        />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" strokeWidth={1.5} />
                         <span className="text-xs text-emerald-400 font-medium">
                           No active incidents
                         </span>
@@ -451,24 +401,22 @@ const Reports = () => {
                 </CardContent>
               </Card>
 
-              {/* Trend chart spans 2 cols */}
+              {/* Month-over-Month spans 2 cols */}
               <div className="lg:col-span-2">
-                <CostAreaChart records={records} />
+                <MonthOverMonthChart records={records} />
               </div>
             </div>
 
-            {/* Bar + Donut */}
+            {/* Row 2: Cumulative Spend + Service Cost % Change */}
             <div className="grid gap-4 lg:grid-cols-2">
-              <CostBarChart records={records} />
-              <CostDonutChart records={records} budget={totalBudget} />
+              <CumulativeSpendChart records={records} budget={totalBudget} />
+              <ServiceCostChangeChart records={records} />
             </div>
 
             {/* Service Cost Comparison Table */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-2 flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium">
-                  Service Cost Comparison
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Service Cost Comparison</CardTitle>
                 <Badge variant="secondary" className="text-xs">
                   {stats.length} services
                 </Badge>
@@ -479,27 +427,15 @@ const Reports = () => {
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
                         <TableHead className="text-xs font-semibold w-8" />
-                        <TableHead className="text-xs font-semibold">
-                          SERVICE
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold">
-                          CATEGORY
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-right">
-                          TOTAL
-                        </TableHead>
+                        <TableHead className="text-xs font-semibold">SERVICE</TableHead>
+                        <TableHead className="text-xs font-semibold">CATEGORY</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">TOTAL</TableHead>
                         <TableHead className="text-xs font-semibold text-right">
                           AVG / RECORD
                         </TableHead>
-                        <TableHead className="text-xs font-semibold text-right">
-                          PEAK
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-right">
-                          RECORDS
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold">
-                          SHARE
-                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-right">PEAK</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">RECORDS</TableHead>
+                        <TableHead className="text-xs font-semibold">SHARE</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -516,19 +452,14 @@ const Reports = () => {
                         stats.map((s) => {
                           const color = getServiceColor(s.name, s.idx);
                           return (
-                            <TableRow
-                              key={s.name}
-                              className="transition-colors hover:bg-muted/30"
-                            >
+                            <TableRow key={s.name} className="transition-colors hover:bg-muted/30">
                               <TableCell className="w-8 px-3">
                                 <span
                                   className="h-2.5 w-2.5 rounded-full block"
                                   style={{ backgroundColor: color }}
                                 />
                               </TableCell>
-                              <TableCell className="text-xs font-medium">
-                                {s.name}
-                              </TableCell>
+                              <TableCell className="text-xs font-medium">{s.name}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">
                                 {s.category}
                               </TableCell>
@@ -575,10 +506,7 @@ const Reports = () => {
               <Card className="border-border bg-card">
                 <CardHeader className="pb-2 flex-row items-center justify-between">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <AlertTriangle
-                      className="h-4 w-4 text-primary"
-                      strokeWidth={1.5}
-                    />
+                    <AlertTriangle className="h-4 w-4 text-primary" strokeWidth={1.5} />
                     Alert Summary
                   </CardTitle>
                   <div className="flex items-center gap-2">
@@ -595,21 +523,13 @@ const Reports = () => {
                     <Table>
                       <TableHeader className="sticky top-0 z-10 bg-card">
                         <TableRow>
-                          <TableHead className="text-xs font-semibold">
-                            SERVICE
-                          </TableHead>
-                          <TableHead className="text-xs font-semibold">
-                            PERIOD
-                          </TableHead>
-                          <TableHead className="text-xs font-semibold text-right">
-                            COST
-                          </TableHead>
+                          <TableHead className="text-xs font-semibold">SERVICE</TableHead>
+                          <TableHead className="text-xs font-semibold">PERIOD</TableHead>
+                          <TableHead className="text-xs font-semibold text-right">COST</TableHead>
                           <TableHead className="text-xs font-semibold text-right">
                             THRESHOLD
                           </TableHead>
-                          <TableHead className="text-xs font-semibold">
-                            RULE
-                          </TableHead>
+                          <TableHead className="text-xs font-semibold">RULE</TableHead>
                           <TableHead className="text-xs font-semibold text-center">
                             STATUS
                           </TableHead>
@@ -618,9 +538,7 @@ const Reports = () => {
                       <TableBody>
                         {alertHistory.slice(0, 20).map((e) => (
                           <TableRow key={e.id}>
-                            <TableCell className="text-xs font-medium">
-                              {e.service_name}
-                            </TableCell>
+                            <TableCell className="text-xs font-medium">{e.service_name}</TableCell>
                             <TableCell className="text-xs text-muted-foreground capitalize">
                               {e.period_type}
                             </TableCell>
@@ -634,15 +552,12 @@ const Reports = () => {
                               {e.winning_component === "absolute"
                                 ? "Budget"
                                 : e.winning_component === "statistical"
-                                ? "Statistical"
-                                : "Percentage"}
+                                  ? "Statistical"
+                                  : "Percentage"}
                             </TableCell>
                             <TableCell className="text-center">
                               {e.status === "open" ? (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="destructive" className="text-[10px]">
                                   open
                                 </Badge>
                               ) : e.status === "resolved" ? (
@@ -653,10 +568,7 @@ const Reports = () => {
                                   resolved
                                 </Badge>
                               ) : (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="secondary" className="text-[10px]">
                                   deactivated
                                 </Badge>
                               )}

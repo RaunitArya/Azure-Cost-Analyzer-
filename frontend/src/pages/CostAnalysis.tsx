@@ -4,21 +4,18 @@ import { FilterSettings } from "@/lib/types";
 import { getAlertThresholds } from "@/lib/api";
 import { useCostData } from "@/hooks/use-cost-data";
 import { ControlPanel } from "@/components/dashboard/ControlPanel";
-import { CostAreaChart } from "@/components/dashboard/CostAreaChart";
-import { CostBarChart } from "@/components/dashboard/CostBarChart";
-import { CostDonutChart } from "@/components/dashboard/CostDonutChart";
+import { DailyCostHeatmap } from "@/components/dashboard/DailyCostHeatmap";
+import { CostUsageCorrelation } from "@/components/dashboard/CostUsageCorrelation";
+import { IdleResourcesChart } from "@/components/dashboard/IdleResourcesChart";
 import { CostTable } from "@/components/dashboard/CostTable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { WifiOff, TrendingUp, TrendingDown, ArrowRight, Layers, Zap } from "lucide-react";
 import { getServiceColor } from "@/lib/colors";
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+const fmt = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-const fmt = (v: number) =>
-  `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-// ─── mini Insight Card ─────────────────────────────────────────────────────────
+// mini Insight Card
 
 interface InsightCardProps {
   label: string;
@@ -33,10 +30,7 @@ function InsightCard({ label, value, sub, trend, color }: InsightCardProps) {
     <Card className="border-border bg-card">
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground mb-1">{label}</p>
-        <p
-          className="text-xl font-bold truncate"
-          style={color ? { color } : undefined}
-        >
+        <p className="text-xl font-bold truncate" style={color ? { color } : undefined}>
           {value}
         </p>
         {(sub || trend) && (
@@ -53,8 +47,8 @@ function InsightCard({ label, value, sub, trend, color }: InsightCardProps) {
                   trend === "up"
                     ? "text-destructive"
                     : trend === "down"
-                    ? "text-emerald-400"
-                    : "text-muted-foreground"
+                      ? "text-emerald-400"
+                      : "text-muted-foreground"
                 }`}
               >
                 {sub}
@@ -67,7 +61,7 @@ function InsightCard({ label, value, sub, trend, color }: InsightCardProps) {
   );
 }
 
-// ─── Service breakdown row ────────────────────────────────────────────────────
+// Service breakdown row
 
 interface ServiceRowProps {
   name: string;
@@ -79,17 +73,11 @@ interface ServiceRowProps {
 
 function ServiceRow({ name, cost, pct, idx, prevCost }: ServiceRowProps) {
   const color = getServiceColor(name, idx);
-  const delta =
-    prevCost != null && prevCost > 0
-      ? ((cost - prevCost) / prevCost) * 100
-      : null;
+  const delta = prevCost != null && prevCost > 0 ? ((cost - prevCost) / prevCost) * 100 : null;
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
-      <span
-        className="h-2.5 w-2.5 rounded-full shrink-0"
-        style={{ backgroundColor: color }}
-      />
+      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
       <span className="flex-1 text-sm truncate">{name}</span>
       {delta !== null && (
         <span
@@ -112,8 +100,6 @@ function ServiceRow({ name, cost, pct, idx, prevCost }: ServiceRowProps) {
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 const CostAnalysis = () => {
   const [filters, setFilters] = useState<FilterSettings>({
@@ -150,20 +136,16 @@ const CostAnalysis = () => {
 
   const records = useMemo(() => {
     let items = data?.data ?? [];
-    if (filters.startDate)
-      items = items.filter((r) => r.date.slice(0, 10) >= filters.startDate);
-    if (filters.endDate)
-      items = items.filter((r) => r.date.slice(0, 10) <= filters.endDate);
+    if (filters.startDate) items = items.filter((r) => r.date.slice(0, 10) >= filters.startDate);
+    if (filters.endDate) items = items.filter((r) => r.date.slice(0, 10) <= filters.endDate);
     return items;
   }, [data, filters.startDate, filters.endDate]);
 
-  // ── derived metrics ──────────────────────────────────────────────────────
+  // derived metrics
 
   const { serviceMap, totalCost, topService, activeServices } = useMemo(() => {
     const sMap = new Map<string, number>();
-    records.forEach((r) =>
-      sMap.set(r.service_name, (sMap.get(r.service_name) ?? 0) + r.cost),
-    );
+    records.forEach((r) => sMap.set(r.service_name, (sMap.get(r.service_name) ?? 0) + r.cost));
     const total = [...sMap.values()].reduce((a, b) => a + b, 0);
     const top = [...sMap.entries()].sort((a, b) => b[1] - a[1])[0];
     return {
@@ -201,6 +183,8 @@ const CostAnalysis = () => {
     [serviceMap],
   );
 
+  void totalBudget;
+
   return (
     <div className="min-h-full bg-background text-foreground">
       {/* Page header */}
@@ -208,9 +192,7 @@ const CostAnalysis = () => {
         <TrendingUp className="h-5 w-5 text-primary" strokeWidth={1.5} />
         <div>
           <h2 className="text-lg font-semibold leading-none">Cost Analysis</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Deep-dive into your Azure spending
-          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Deep-dive into your Azure spending</p>
         </div>
       </div>
 
@@ -225,32 +207,31 @@ const CostAnalysis = () => {
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
             </div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Skeleton className="h-[340px] rounded-lg lg:col-span-2" />
+            {/* Heatmap skeleton */}
+            <Skeleton className="h-[180px] rounded-lg" />
+            {/* Correlation + Idle row */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Skeleton className="h-[340px] rounded-lg" />
               <Skeleton className="h-[340px] rounded-lg" />
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Skeleton className="h-[300px] rounded-lg" />
+            {/* Service breakdown + efficiency */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Skeleton className="h-[300px] rounded-lg lg:col-span-2" />
               <Skeleton className="h-[300px] rounded-lg" />
             </div>
             <Skeleton className="h-[400px] rounded-lg" />
           </div>
         )}
 
-        {/* ── Error ── */}
         {isError && !isLoading && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-destructive/40 py-16 text-center">
-            <WifiOff
-              className="h-10 w-10 text-destructive"
-              strokeWidth={1.5}
-            />
+            <WifiOff className="h-10 w-10 text-destructive" strokeWidth={1.5} />
             <p className="text-sm text-destructive">
               Failed to fetch data. Ensure your FastAPI backend is running.
             </p>
           </div>
         )}
 
-        {/* ── Data ── */}
         {data && !isLoading && (
           <>
             {/* KPI row */}
@@ -259,13 +240,7 @@ const CostAnalysis = () => {
                 label="Total Spend"
                 value={fmt(totalCost)}
                 sub={periodLabel}
-                trend={
-                  periodDelta > 0
-                    ? "up"
-                    : periodDelta < 0
-                    ? "down"
-                    : "neutral"
-                }
+                trend={periodDelta > 0 ? "up" : periodDelta < 0 ? "down" : "neutral"}
               />
               <InsightCard
                 label="Daily Average"
@@ -287,27 +262,80 @@ const CostAnalysis = () => {
               />
             </div>
 
-            {/* Main charts row */}
-            <div className="grid gap-4 lg:grid-cols-3">
-              {/* Area chart spans 2 cols */}
-              <div className="lg:col-span-2">
-                <CostAreaChart records={records} />
-              </div>
+            {/* ── Idle— full width ── */}
+            <IdleResourcesChart records={records} />
 
-              {/* Service breakdown panel */}
-              <Card className="border-border bg-card">
+            {/* ── Correlation + Efficiency side by side ── */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CostUsageCorrelation records={records} />
+              {/* Efficiency insights stacked */}
+              {sortedServices.length > 1 && (
+                <div className="flex flex-col gap-4">
+                  <Card className="border-border bg-card flex-1">
+                    <CardContent className="p-4 flex items-start gap-3 h-full">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/15">
+                        <Zap className="h-4 w-4 text-destructive" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Highest Spend</p>
+                        <p className="text-sm font-semibold truncate">{sortedServices[0][0]}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmt(sortedServices[0][1])} —{" "}
+                          {Math.round((sortedServices[0][1] / totalCost) * 100)}% of total
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border bg-card flex-1">
+                    <CardContent className="p-4 flex items-start gap-3 h-full">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
+                        <TrendingDown className="h-4 w-4 text-emerald-400" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Lowest Spend</p>
+                        <p className="text-sm font-semibold truncate">
+                          {sortedServices[sortedServices.length - 1][0]}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmt(sortedServices[sortedServices.length - 1][1])}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border bg-card flex-1">
+                    <CardContent className="p-4 flex items-start gap-3 h-full">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                        <ArrowRight className="h-4 w-4 text-primary" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Cost Concentration</p>
+                        <p className="text-sm font-semibold">
+                          Top service: {Math.round((sortedServices[0][1] / totalCost) * 100)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Across {activeServices} service
+                          {activeServices !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+
+            {/* ── Service breakdown panel + Heatmap ── */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              {/* Service breakdown spans 2 cols */}
+              <Card className="border-border bg-card lg:col-span-2">
                 <div className="flex items-center justify-between px-4 pt-4 pb-2">
                   <p className="text-sm font-medium">Service Breakdown</p>
-                  <Layers
-                    className="h-4 w-4 text-muted-foreground"
-                    strokeWidth={1.5}
-                  />
+                  <Layers className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
                 </div>
                 <CardContent className="px-4 pb-4 pt-0 overflow-auto max-h-[260px]">
                   {sortedServices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      No data
-                    </p>
+                    <p className="text-sm text-muted-foreground text-center py-8">No data</p>
                   ) : (
                     sortedServices.map(([name, cost], idx) => (
                       <ServiceRow
@@ -321,96 +349,10 @@ const CostAnalysis = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Daily Cost Heatmap */}
+              <DailyCostHeatmap records={records} />
             </div>
-
-            {/* Bar + Donut row */}
-            <div className="grid gap-4 lg:grid-cols-2">
-              <CostBarChart records={records} />
-              <CostDonutChart records={records} budget={totalBudget} />
-            </div>
-
-            {/* Efficiency insights */}
-            {sortedServices.length > 1 && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                {/* Highest spend */}
-                <Card className="border-border bg-card">
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/15">
-                      <Zap
-                        className="h-4 w-4 text-destructive"
-                        strokeWidth={1.5}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        Highest Spend
-                      </p>
-                      <p className="text-sm font-semibold truncate">
-                        {sortedServices[0][0]}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {fmt(sortedServices[0][1])} —{" "}
-                        {Math.round(
-                          (sortedServices[0][1] / totalCost) * 100,
-                        )}
-                        % of total
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Lowest spend */}
-                <Card className="border-border bg-card">
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                      <TrendingDown
-                        className="h-4 w-4 text-emerald-400"
-                        strokeWidth={1.5}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        Lowest Spend
-                      </p>
-                      <p className="text-sm font-semibold truncate">
-                        {sortedServices[sortedServices.length - 1][0]}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {fmt(sortedServices[sortedServices.length - 1][1])}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Cost concentration */}
-                <Card className="border-border bg-card">
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                      <ArrowRight
-                        className="h-4 w-4 text-primary"
-                        strokeWidth={1.5}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        Cost Concentration
-                      </p>
-                      <p className="text-sm font-semibold">
-                        Top service:{" "}
-                        {Math.round(
-                          (sortedServices[0][1] / totalCost) * 100,
-                        )}
-                        %
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Across {activeServices} service
-                        {activeServices !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
 
             {/* Full data table */}
             <CostTable records={records} />

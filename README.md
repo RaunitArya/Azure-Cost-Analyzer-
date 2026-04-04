@@ -26,39 +26,94 @@ Developers often overspend on cloud; this tool: Fetches Azure VM, app service, D
 
 ```
 Azure Cost Analyzer/
-├── alembic.ini
-├── pyproject.toml
 ├── README.md
-├── requirements.txt
-└── app/
- ├── config.py
- ├── main.py
- ├── alembic/              # Database migration scripts
- │   ├── env.py
- │   ├── README
- │   ├── script.py.mako
- │   └── versions/
- ├── azure/
- │   ├── auth.py           # Azure authentication logic
- │   └── cost_client.py    # Azure cost API client
- ├── db/
- │   ├── database.py       # DB connection setup
- │   ├── models.py         # DB models/schema
- │   └── operations.py     # DB operations/utilities
- ├── exceptions/           # Custom exception classes
- │   └── cost_exceptions.py
- ├── handlers/             # Exception handler functions
- │   └── exception_handlers.py
- ├── models/               # Data models for cost analysis
- │   └── cost_models.py
- ├── routes/
- │   └── cost_routes.py    # Cost API endpoints
- ├── services/             # Business logic and services
- │   ├── cost_preprocessor.py
- │   ├── cost_service.py
- |   └── cost_service.py   # cost data fetching & saving logic
- └── utils/
-  └── responses.py         # Standardized API responses
+├── backend/                          # FastAPI backend application
+│   ├── alembic.ini
+│   ├── docker-compose.yml
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── pyproject.toml
+│   ├── requirements.txt
+│   └── app/
+│       ├── config.py                 # Application configuration
+│       ├── main.py                   # FastAPI application entry point
+│       ├── scheduler.py              # Task scheduler for alerts & anomalies
+│       ├── alembic/                  # Database migration scripts
+│       │   ├── env.py
+│       │   ├── README
+│       │   ├── script.py.mako
+│       │   └── versions/             # Migration history
+│       ├── azure/                    # Azure SDK integration
+│       │   ├── auth.py               # Azure authentication logic
+│       │   └── cost_client.py        # Azure Cost Management API client
+│       ├── db/
+│       │   ├── database.py           # PostgreSQL connection setup
+│       │   ├── models.py             # SQLAlchemy ORM models
+│       │   ├── operations.py         # Generic database operations
+│       │   └── alert_operations.py   # Alert-specific DB operations
+│       ├── exceptions/
+│       │   └── cost_exceptions.py    # Custom exception classes
+│       ├── handlers/
+│       │   └── exception_handlers.py # Global exception handlers
+│       ├── models/                   # Pydantic data models
+│       │   ├── alert_models.py       # Alert request/response models
+│       │   └── cost_models.py        # Cost analysis data models
+│       ├── routes/                   # API endpoints
+│       │   ├── alert_routes.py       # Alert API routes
+│       │   └── cost_routes.py        # Cost analysis API routes
+│       ├── services/                 # Business logic & orchestration
+│       │   ├── alert_service.py      # Alert management logic
+│       │   ├── cache_service.py      # Caching layer for performance
+│       │   ├── cost_preprocessor.py  # Data preprocessing pipeline
+│       │   ├── cost_service.py       # Cost data fetching & analysis
+│       │   ├── cost_tasks.py         # Background task definitions
+│       │   └── email_service.py      # Email notification service
+│       └── utils/
+│           └── responses.py          # Standardized API response helpers
+└── frontend/                         # React + TypeScript UI application
+    ├── package.json
+    ├── tsconfig.json
+    ├── vite.config.ts
+    ├── tailwind.config.ts
+    ├── postcss.config.js
+    ├── eslint.config.js
+    ├── vitest.config.ts
+    ├── components.json
+    ├── index.html
+    ├── public/
+    │   ├── robots.txt
+    │   └── staticwebapp.config.json
+    └── src/
+        ├── App.tsx
+        ├── main.tsx
+        ├── vite-env.d.ts
+        ├── App.css
+        ├── index.css
+        ├── components/               # Reusable UI components
+        │   ├── AppSidebar.tsx
+        │   ├── NavLink.tsx
+        │   ├── dashboard/            # Dashboard-specific components
+        │   └── ui/                   # Shadcn/ui components
+        ├── hooks/                    # Custom React hooks
+        │   ├── use-cost-data.ts
+        │   ├── use-mobile.tsx
+        │   └── use-toast.ts
+        ├── lib/                      # Utility functions & types
+        │   ├── api.ts                # API client configuration
+        │   ├── colors.ts             # Color constants
+        │   ├── config.ts             # Frontend configuration
+        │   ├── types.ts              # TypeScript type definitions
+        │   └── utils.ts              # Helper utilities
+        ├── pages/                    # Page components
+        │   ├── Index.tsx             # Dashboard home page
+        │   ├── CostAnalysis.tsx      # Cost analysis page
+        │   ├── Budget.tsx            # Budget management page
+        │   ├── Reports.tsx           # Reports page
+        │   ├── Settings.tsx          # Settings page
+        │   └── NotFound.tsx          # 404 page
+        └── test/                     # Test files
+            ├── example.test.ts
+            └── setup.ts
 ```
 
 ## 🚀 Setup & Installation
@@ -160,28 +215,33 @@ Choose
 
 ## ⚙️ Environment variables (.env)
 
-```bash
-# Environment: development | production | testing
-ENVIRONMENT="development|production|testing"
-DEBUG="true|false"
+Refer the .env.example from both backend and frontend folders. Create a .env file in each and fill in the required values.
 
-HOST=<host_ip>
-PORT=<port_number>
+## 📧 Setting Up SMTP for Email Alerts
 
-# Azure
-AZURE_CLIENT_ID=<azure_client_id>
-AZURE_OBJECT_ID=<azure_object_id>
-AZURE_TENANT_ID=<azure_tenant_id>
-AZURE_CLIENT_SECRET=<azure_client_secret>
-AZURE_SUBSCRIPTION_ID=<azure_subscription_id>
+The application supports sending email alerts for budget warnings and anomaly detection. Follow the steps below to configure SMTP:
 
-# Postgres
-DATABASE_URL=<database_url>
+### **Gmail SMTP Setup**
 
-# Scheduler Configuration
-ENABLE_SCHEDULER=true|false
-DAILY_COST_HOUR=<daily_cost_hour>
-DAILY_COST_MINUTE=<daily_cost_minute>
-SERVICE_COST_HOUR=<service_cost_hour>
-SERVICE_COST_MINUTE=<service_cost_minute>
-```
+1. **Enable 2-Step Verification** (if not already enabled):
+   - Go to [myaccount.google.com/security](https://myaccount.google.com/security)
+   - Enable 2-Step Verification
+
+2. **Generate an App Password**:
+   - Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   - Select "Mail" and "Windows Computer" (or your device)
+   - Click "Generate"
+   - Copy the generated 16-character password
+
+3. **Add to .env**:
+
+   ```bash
+   SMTP_SERVER=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=your-email@gmail.com
+   SMTP_PASSWORD=your-16-char-app-password
+   SMTP_FROM_EMAIL=your-email@gmail.com
+   SMTP_FROM_NAME=Azure Cost Analyzer
+   ```
+
+4. **You can also refer to** [How to Configure Gmail SMTP Server Settings](https://dev.to/msnmongare/how-to-configure-gmail-smtp-server-settings-7l6)

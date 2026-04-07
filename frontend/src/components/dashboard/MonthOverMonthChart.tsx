@@ -49,12 +49,18 @@ export function MonthOverMonthChart({ records }: MonthOverMonthChartProps) {
       (service) => (serviceTotalCost.get(service) ?? 0) > 0
     );
 
-    const series = services.map((svc, i) => ({
+    // Create stable color mapping based on all unique service names (sorted)
+    const allServiceNames = [...allServices].sort();
+    const serviceColorMap = new Map(
+      allServiceNames.map((name, idx) => [name, getServiceColor(name, idx)])
+    );
+
+    const series = services.map((svc) => ({
       data: sortedMonths.map(
         (ym) => Math.round((monthServiceMap.get(ym)?.get(svc) ?? 0) * 100) / 100,
       ),
       label: svc,
-      color: getServiceColor(svc, i),
+      color: serviceColorMap.get(svc) || getServiceColor(svc, 0),
       stack: "total",
       highlightScope: { fade: "global", highlight: "item" } as const,
     }));

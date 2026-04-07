@@ -19,14 +19,21 @@ export function CostDonutChart({ records, budget }: CostDonutChartProps) {
   // Filter out services with zero cost
   const filteredServiceMap = [...serviceMap.entries()]
     .filter(([_, cost]) => cost > 0);
+
+  // Create stable color mapping based on unique service names
+  const allServiceNames = [...new Set(records.map((r) => r.service_name))].sort();
+  const serviceColorMap = new Map(
+    allServiceNames.map((name, idx) => [name, getServiceColor(name, idx)])
+  );
+
   const totalCost = filteredServiceMap.reduce((a, [_, b]) => a + b, 0);
   const pieData = filteredServiceMap
     .sort((a, b) => b[1] - a[1])
-    .map(([label, value], i) => ({
-      id: i,
+    .map(([label, value]) => ({
+      id: label,
       value: Math.round(value * 100) / 100,
       label,
-      color: getServiceColor(label, i),
+      color: serviceColorMap.get(label) || getServiceColor(label, 0),
     }));
 
   return (

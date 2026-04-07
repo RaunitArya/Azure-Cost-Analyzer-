@@ -35,15 +35,22 @@ export function CostBarChart({ records }: CostBarChartProps) {
   const services = [...allServices].filter(
     (service) => (serviceTotalCost.get(service) ?? 0) > 0
   );
+
+  // Create stable color mapping based on all unique service names (sorted)
+  const allServiceNames = [...allServices].sort();
+  const serviceColorMap = new Map(
+    allServiceNames.map((name, idx) => [name, getServiceColor(name, idx)])
+  );
+
   const xLabels = sortedDates.map(formatDateLabel);
 
-  const series = services.map((service, i) => ({
+  const series = services.map((service) => ({
     data: sortedDates.map(
       (date) =>
         Math.round((dateServiceMap.get(date)?.get(service) ?? 0) * 100) / 100,
     ),
     label: service,
-    color: getServiceColor(service, i),
+    color: serviceColorMap.get(service) || getServiceColor(service, 0),
     stack: "total",
     stackOrder: "appearance" as const,
     highlightScope: { fade: "global", highlight: "item" } as const,

@@ -18,14 +18,11 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
   records.forEach((r) => {
     const d = r.date.slice(0, 10);
     dateMap.set(d, (dateMap.get(d) ?? 0) + r.cost);
-    if (!serviceMap.has(r.service_name))
-      serviceMap.set(r.service_name, new Map());
+    if (!serviceMap.has(r.service_name)) serviceMap.set(r.service_name, new Map());
     const sm = serviceMap.get(r.service_name)!;
     sm.set(d, (sm.get(d) ?? 0) + r.cost);
   });
-  const sorted = [...dateMap.entries()].sort((a, b) =>
-    a[0].localeCompare(b[0]),
-  );
+  const sorted = [...dateMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   const xData = sorted.map(([date]) => formatDateLabel(date));
   const yData = sorted.map(([, cost]) => Math.round(cost * 100) / 100);
 
@@ -33,15 +30,10 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
   const serviceNames = [...serviceMap.keys()];
 
   // Spike detection: mark days where cost > 2x average
-  const avg =
-    yData.length > 0 ? yData.reduce((a, b) => a + b, 0) / yData.length : 0;
-  const spikeIndices = new Set(
-    yData.map((v, i) => (v > avg * 2 ? i : -1)).filter((i) => i >= 0),
-  );
+  const avg = yData.length > 0 ? yData.reduce((a, b) => a + b, 0) / yData.length : 0;
+  const spikeIndices = new Set(yData.map((v, i) => (v > avg * 2 ? i : -1)).filter((i) => i >= 0));
   const showMark =
-    yData.length > 1
-      ? (params: ShowMarkParams) => spikeIndices.has(params.index)
-      : false;
+    yData.length > 1 ? (params: ShowMarkParams) => spikeIndices.has(params.index) : false;
 
   return (
     <Card className="border-border bg-card">
@@ -67,10 +59,7 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
               series={[
                 {
                   data: serviceNames.map(
-                    (s) =>
-                      Math.round(
-                        (serviceMap.get(s)!.get(sorted[0][0]) ?? 0) * 100,
-                      ) / 100,
+                    (s) => Math.round((serviceMap.get(s)!.get(sorted[0][0]) ?? 0) * 100) / 100,
                   ),
                   color: "#3B82F6",
                   area: true,
@@ -99,6 +88,12 @@ export function CostAreaChart({ records }: CostAreaChartProps) {
                   data: xData,
                   scaleType: "point",
                   tickLabelStyle: { fontSize: 10, fill: "hsl(215 20% 65%)" },
+                  tickInterval: (_value: string, index: number) => {
+                    const total = xData.length;
+                    if (total <= 7) return true;
+                    const step = Math.ceil(total / 7);
+                    return index % step === 0 || index === total - 1;
+                  },
                 },
               ]}
               yAxis={[

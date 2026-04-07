@@ -10,12 +10,19 @@ import { IdleResourcesChart } from "@/components/dashboard/IdleResourcesChart";
 import { CostTable } from "@/components/dashboard/CostTable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { WifiOff, TrendingUp, TrendingDown, ArrowRight, Layers, Zap } from "lucide-react";
+import {
+  WifiOff,
+  TrendingUp,
+  TrendingDown,
+  ArrowRight,
+  Layers,
+  Zap,
+  IndianRupee,
+  Calculator,
+} from "lucide-react";
 import { getServiceColor } from "@/lib/colors";
 
 const fmt = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-// mini Insight Card
 
 interface InsightCardProps {
   label: string;
@@ -23,39 +30,44 @@ interface InsightCardProps {
   sub?: string;
   trend?: "up" | "down" | "neutral";
   color?: string;
+  icon?: React.ReactNode;
+  iconBg?: string;
+  badge?: React.ReactNode;
+  extra?: React.ReactNode;
 }
 
-function InsightCard({ label, value, sub, trend, color }: InsightCardProps) {
+function InsightCard({
+  label,
+  value,
+  sub,
+  trend,
+  color,
+  icon,
+  iconBg,
+  badge,
+  extra,
+}: InsightCardProps) {
   return (
-    <Card className="border-border bg-card">
-      <CardContent className="p-4">
-        <p className="text-xs text-muted-foreground mb-1">{label}</p>
-        <p className="text-xl font-bold truncate" style={color ? { color } : undefined}>
-          {value}
-        </p>
-        {(sub || trend) && (
-          <div className="flex items-center gap-1 mt-1">
-            {trend === "up" && (
-              <TrendingUp className="h-3 w-3 text-destructive" strokeWidth={1.5} />
-            )}
-            {trend === "down" && (
-              <TrendingDown className="h-3 w-3 text-emerald-400" strokeWidth={1.5} />
-            )}
-            {sub && (
-              <span
-                className={`text-[11px] ${
-                  trend === "up"
-                    ? "text-destructive"
-                    : trend === "down"
-                      ? "text-emerald-400"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {sub}
-              </span>
-            )}
+    <Card className="border-border bg-card transition-shadow hover:shadow-md">
+      <CardContent className="flex items-center gap-4 p-4">
+        {icon && (
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg || "bg-primary/15 text-primary"}`}
+          >
+            {icon}
           </div>
         )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="truncate text-lg font-semibold" style={color ? { color } : undefined}>
+              {value}
+            </p>
+            {badge}
+          </div>
+          {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+          {extra}
+        </div>
       </CardContent>
     </Card>
   );
@@ -241,31 +253,57 @@ const CostAnalysis = () => {
                 value={fmt(totalCost)}
                 sub={periodLabel}
                 trend={periodDelta > 0 ? "up" : periodDelta < 0 ? "down" : "neutral"}
+                icon={<IndianRupee className="h-5 w-5" strokeWidth={1.5} />}
+                iconBg="bg-primary/15 text-primary"
+                badge={
+                  periodDelta !== 0 ? (
+                    <span
+                      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                        periodDelta > 0
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-emerald-500/15 text-emerald-400"
+                      }`}
+                    >
+                      {periodDelta > 0 ? (
+                        <TrendingUp className="h-3 w-3" strokeWidth={1.5} />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" strokeWidth={1.5} />
+                      )}
+                      {Math.abs(periodDelta)}%
+                    </span>
+                  ) : null
+                }
               />
               <InsightCard
                 label="Daily Average"
                 value={fmt(dailyAvg)}
                 sub="per calendar day"
                 trend="neutral"
+                icon={<Calculator className="h-5 w-5" strokeWidth={1.5} />}
+                iconBg="bg-chart-1/15 text-chart-1"
               />
               <InsightCard
                 label="Top Service"
                 value={topService?.[0] ?? "—"}
                 sub={topService ? fmt(topService[1]) : undefined}
                 color={topService ? getServiceColor(topService[0], 0) : undefined}
+                icon={<Zap className="h-5 w-5" strokeWidth={1.5} />}
+                iconBg="bg-success/15 text-success"
               />
               <InsightCard
                 label="Active Services"
                 value={String(activeServices)}
                 sub={`${records.length} records`}
                 trend="neutral"
+                icon={<Layers className="h-5 w-5" strokeWidth={1.5} />}
+                iconBg="bg-chart-4/15 text-chart-4"
               />
             </div>
 
-            {/* ── Idle— full width ── */}
+            {/* Idle— full width */}
             <IdleResourcesChart records={records} />
 
-            {/* ── Correlation + Efficiency side by side ── */}
+            {/* Correlation + Efficiency side by side */}
             <div className="grid gap-4 lg:grid-cols-2">
               <CostUsageCorrelation records={records} />
               {/* Efficiency insights stacked */}

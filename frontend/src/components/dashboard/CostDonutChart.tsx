@@ -16,8 +16,11 @@ export function CostDonutChart({ records, budget }: CostDonutChartProps) {
       (serviceMap.get(r.service_name) ?? 0) + r.cost,
     ),
   );
-  const totalCost = [...serviceMap.values()].reduce((a, b) => a + b, 0);
-  const pieData = [...serviceMap.entries()]
+  // Filter out services with zero cost
+  const filteredServiceMap = [...serviceMap.entries()]
+    .filter(([_, cost]) => cost > 0);
+  const totalCost = filteredServiceMap.reduce((a, [_, b]) => a + b, 0);
+  const pieData = filteredServiceMap
     .sort((a, b) => b[1] - a[1])
     .map(([label, value], i) => ({
       id: i,

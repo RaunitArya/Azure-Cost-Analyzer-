@@ -16,17 +16,25 @@ export function CostBarChart({ records }: CostBarChartProps) {
   // Group by date then service
   const dateServiceMap = new Map<string, Map<string, number>>();
   const allServices = new Set<string>();
+  const serviceTotalCost = new Map<string, number>();
 
   records.forEach((r) => {
     const d = r.date.slice(0, 10);
     allServices.add(r.service_name);
+    serviceTotalCost.set(
+      r.service_name,
+      (serviceTotalCost.get(r.service_name) ?? 0) + r.cost
+    );
     if (!dateServiceMap.has(d)) dateServiceMap.set(d, new Map());
     const sm = dateServiceMap.get(d)!;
     sm.set(r.service_name, (sm.get(r.service_name) ?? 0) + r.cost);
   });
 
   const sortedDates = [...dateServiceMap.keys()].sort();
-  const services = [...allServices];
+  // Filter out services with zero total cost
+  const services = [...allServices].filter(
+    (service) => (serviceTotalCost.get(service) ?? 0) > 0
+  );
   const xLabels = sortedDates.map(formatDateLabel);
 
   const series = services.map((service, i) => ({

@@ -23,23 +23,31 @@ interface MonthOverMonthChartProps {
 }
 
 export function MonthOverMonthChart({ records }: MonthOverMonthChartProps) {
-  const { months, series, hasData } = useMemo(() => {
-    if (records.length === 0) return { months: [], series: [], hasData: false };
+  const { months, series, hasData, filteredServices } = useMemo(() => {
+    if (records.length === 0) return { months: [], series: [], hasData: false, filteredServices: [] };
 
 
     const monthServiceMap = new Map<string, Map<string, number>>();
     const allServices = new Set<string>();
+    const serviceTotalCost = new Map<string, number>();
 
     records.forEach((r) => {
       const ym = r.date.slice(0, 7); // "YYYY-MM"
       allServices.add(r.service_name);
+      serviceTotalCost.set(
+        r.service_name,
+        (serviceTotalCost.get(r.service_name) ?? 0) + r.cost
+      );
       if (!monthServiceMap.has(ym)) monthServiceMap.set(ym, new Map());
       const sm = monthServiceMap.get(ym)!;
       sm.set(r.service_name, (sm.get(r.service_name) ?? 0) + r.cost);
     });
 
     const sortedMonths = [...monthServiceMap.keys()].sort();
-    const services = [...allServices];
+    // Filter out services with zero total cost
+    const services = [...allServices].filter(
+      (service) => (serviceTotalCost.get(service) ?? 0) > 0
+    );
 
     const series = services.map((svc, i) => ({
       data: sortedMonths.map(
@@ -55,13 +63,9 @@ export function MonthOverMonthChart({ records }: MonthOverMonthChartProps) {
       months: sortedMonths.map(monthLabel),
       series,
       hasData: sortedMonths.length > 0,
+      filteredServices: services,
     };
   }, [records]);
-
-  const legendServices = useMemo(
-    () => [...new Set(records.map((r) => r.service_name))],
-    [records],
-  );
 
   return (
     <Card className="border-border bg-card">
@@ -114,7 +118,7 @@ export function MonthOverMonthChart({ records }: MonthOverMonthChartProps) {
               hideLegend
             />
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 -mt-1">
-              {legendServices.map((s, i) => (
+              {filteredServices.map((s, i) => (
                 <div key={s} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <span
                     className="inline-block h-2 w-2 rounded-sm"

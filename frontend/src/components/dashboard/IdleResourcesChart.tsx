@@ -85,6 +85,7 @@ export function IdleResourcesChart({ records }: IdleResourcesChartProps) {
 
   const serviceNames = services.map((s) => s.name);
   const utilisationData = services.map((s) => s.utilisation);
+  const inactiveData = services.map((s) => (s.utilisation < 100 ? 100 - s.utilisation : 0));
   const wastedData = services.map((s) =>
     services.find((x) => x.name === s.name)?.totalCost
       ? Math.round((s.wastedCost / s.totalCost) * 100)
@@ -111,7 +112,7 @@ export function IdleResourcesChart({ records }: IdleResourcesChartProps) {
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Blue = days active % · Red = wasted cost % — over {totalDays} day window
+          Blue = days active % · Gray = inactive days % — over {totalDays} day window
         </p>
       </CardHeader>
       <CardContent className="h-[300px]">
@@ -149,10 +150,10 @@ export function IdleResourcesChart({ records }: IdleResourcesChartProps) {
                   valueFormatter: (v) => `${v}% active`,
                 },
                 {
-                  data: wastedData,
-                  label: "Wasted cost %",
+                  data: inactiveData,
+                  label: "Inactive days %",
                   color: "#EF4444",
-                  valueFormatter: (v) => `${v}% wasted`,
+                  valueFormatter: (v) => `${v}% inactive`,
                 },
               ]}
               sx={{
@@ -179,7 +180,7 @@ export function IdleResourcesChart({ records }: IdleResourcesChartProps) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#EF4444]" />
-                  <span className="text-[10px] text-muted-foreground">Wasted cost %</span>
+                  <span className="text-[10px] text-muted-foreground">Inactive days %</span>
                 </div>
               </div>
               {totalWasted > 0 && (

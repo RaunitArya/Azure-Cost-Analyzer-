@@ -1,12 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,10 +93,7 @@ const statusBadge = (status: AlertEvent["status"]) => {
     );
   if (status === "resolved")
     return (
-      <Badge
-        variant="secondary"
-        className="text-[10px] bg-emerald-100 text-emerald-700"
-      >
+      <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700">
         resolved
       </Badge>
     );
@@ -113,15 +104,22 @@ const statusBadge = (status: AlertEvent["status"]) => {
   );
 };
 
+const maskEmail = (email: string) => {
+  if (!email) return "";
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain) return "";
+  const maskedLocal = localPart.charAt(0) + "***";
+  return `${maskedLocal}@${domain}`;
+};
+
 export default function Budget() {
   const queryClient = useQueryClient();
 
-  const { data: alertSettings, isLoading: isLoadingSettings } =
-    useQuery<AnomalySettings>({
-      queryKey: ["alert-settings"],
-      queryFn: getAlertSettings,
-      staleTime: 30_000,
-    });
+  const { data: alertSettings, isLoading: isLoadingSettings } = useQuery<AnomalySettings>({
+    queryKey: ["alert-settings"],
+    queryFn: getAlertSettings,
+    staleTime: 30_000,
+  });
 
   const { data: services = [] } = useQuery<AzureService[]>({
     queryKey: ["alert-services"],
@@ -135,26 +133,21 @@ export default function Budget() {
     staleTime: 30_000,
   });
 
-  const { data: activeAlerts = [], isLoading: isLoadingActive } = useQuery<
-    AlertEvent[]
-  >({
+  const { data: activeAlerts = [], isLoading: isLoadingActive } = useQuery<AlertEvent[]>({
     queryKey: ["alert-events-open"],
     queryFn: () => getAlertEvents({ status: "open", limit: 50 }),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
 
-  const { data: alertHistory = [], isLoading: isLoadingHistory } = useQuery<
-    AlertEvent[]
-  >({
+  const { data: alertHistory = [], isLoading: isLoadingHistory } = useQuery<AlertEvent[]>({
     queryKey: ["alert-events-history"],
     queryFn: () => getAlertEvents({ limit: 100 }),
     staleTime: 30_000,
   });
 
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
-  const [selectedPeriodType, setSelectedPeriodType] =
-    useState<PeriodType>("monthly");
+  const [selectedPeriodType, setSelectedPeriodType] = useState<PeriodType>("monthly");
   const [absoluteThreshold, setAbsoluteThreshold] = useState<string>("");
   const [savingThreshold, setSavingThreshold] = useState(false);
 
@@ -176,9 +169,7 @@ export default function Budget() {
     setReceiverEmail(alertSettings.receiver_email ?? "");
     setEmailEnabled(alertSettings.email_enabled);
     setKValue(String(alertSettings.k_value));
-    setPctBuffer(
-      String(Math.round((alertSettings.percentage_buffer - 1) * 100)),
-    );
+    setPctBuffer(String(Math.round((alertSettings.percentage_buffer - 1) * 100)));
     setHistoryDays(String(alertSettings.alert_history_days));
     setHistoryMonths(String(alertSettings.alert_history_months));
     setGlobalCooldown(String(alertSettings.cooldown_minutes));
@@ -224,8 +215,7 @@ export default function Budget() {
           period_type: selectedPeriodType,
           absolute_threshold: amount,
         });
-        const svcName =
-          services.find((s) => s.id === svcId)?.name ?? `service #${svcId}`;
+        const svcName = services.find((s) => s.id === svcId)?.name ?? `service #${svcId}`;
         toast({
           title: "✓ Alert created",
           description: `Budget threshold set for ${svcName}`,
@@ -290,14 +280,7 @@ export default function Budget() {
     const hd = parseInt(historyDays);
     const hm = parseInt(historyMonths);
     const cd = parseInt(globalCooldown);
-    if (
-      [k, pb, hd, hm, cd].some(isNaN) ||
-      k <= 0 ||
-      pb <= 0 ||
-      hd <= 0 ||
-      hm <= 0 ||
-      cd <= 0
-    ) {
+    if ([k, pb, hd, hm, cd].some(isNaN) || k <= 0 || pb <= 0 || hd <= 0 || hm <= 0 || cd <= 0) {
       toast({
         title: "Invalid values",
         description: "All detection settings must be positive numbers.",
@@ -336,7 +319,10 @@ export default function Budget() {
         queryClient.invalidateQueries({ queryKey: ["alert-events-open"] }),
         queryClient.invalidateQueries({ queryKey: ["alert-events-history"] }),
       ]);
-      toast({ title: "✓ Threshold deactivated", description: "Any open incident for this service has been resolved." });
+      toast({
+        title: "✓ Threshold deactivated",
+        description: "Any open incident for this service has been resolved.",
+      });
     } catch (err) {
       toast({
         title: "Failed to deactivate",
@@ -352,9 +338,7 @@ export default function Budget() {
     <div className="p-6 space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Budget Alerts
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Budget Alerts</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage budget thresholds and email notifications
         </p>
@@ -376,10 +360,7 @@ export default function Budget() {
                 <Label htmlFor="service-select" className="text-sm">
                   Azure Service
                 </Label>
-                <Select
-                  value={selectedServiceId}
-                  onValueChange={setSelectedServiceId}
-                >
+                <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
                   <SelectTrigger id="service-select" className="w-full">
                     <SelectValue placeholder="Select a service…" />
                   </SelectTrigger>
@@ -409,9 +390,7 @@ export default function Budget() {
                   <Label className="text-sm">Period Type</Label>
                   <Select
                     value={selectedPeriodType}
-                    onValueChange={(v) =>
-                      setSelectedPeriodType(v as PeriodType)
-                    }
+                    onValueChange={(v) => setSelectedPeriodType(v as PeriodType)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -446,9 +425,7 @@ export default function Budget() {
                 disabled={savingThreshold}
                 className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-medium"
               >
-                {savingThreshold && (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                )}
+                {savingThreshold && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Create Alert
               </Button>
 
@@ -464,9 +441,7 @@ export default function Budget() {
                         className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-sm"
                       >
                         <div>
-                          <span className="font-medium text-foreground">
-                            {t.service_name}
-                          </span>
+                          <span className="font-medium text-foreground">{t.service_name}</span>
                           <span className="ml-2 text-xs text-muted-foreground capitalize">
                             {t.period_type}
                           </span>
@@ -536,15 +511,22 @@ export default function Budget() {
                 </div>
               ) : (
                 <>
+                  {alertSettings?.receiver_email && (
+                    <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+                      <p className="text-xs text-muted-foreground mb-1">Current Email Address</p>
+                      <p className="font-medium text-foreground">
+                        {maskEmail(alertSettings.receiver_email)}
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="receiver-email" className="text-sm">
-                      Email Address
+                      {alertSettings?.receiver_email ? "Update Email Address" : "Email Address"}
                     </Label>
                     <Input
                       id="receiver-email"
                       type="email"
                       placeholder="admin@company.com"
-                      value={receiverEmail}
                       onChange={(e) => setReceiverEmail(e.target.value)}
                     />
                   </div>
@@ -556,10 +538,7 @@ export default function Budget() {
                       onChange={(e) => setEmailEnabled(e.target.checked)}
                       className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                     />
-                    <Label
-                      htmlFor="email-enabled"
-                      className="text-sm cursor-pointer"
-                    >
+                    <Label htmlFor="email-enabled" className="text-sm cursor-pointer">
                       Enable email notifications
                     </Label>
                   </div>
@@ -568,9 +547,7 @@ export default function Budget() {
                     disabled={savingEmail}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                   >
-                    {savingEmail && (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    )}
+                    {savingEmail && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Save Settings
                   </Button>
                 </>
@@ -586,8 +563,7 @@ export default function Budget() {
                 Detection Settings
               </CardTitle>
               <CardDescription className="text-xs">
-                Controls the statistical anomaly detection engine and
-                notification cooldown.
+                Controls the statistical anomaly detection engine and notification cooldown.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -603,9 +579,7 @@ export default function Budget() {
                     <div className="space-y-1.5">
                       <Label htmlFor="pct-buffer" className="text-sm">
                         Alert Buffer
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          % above avg
-                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">% above avg</span>
                       </Label>
                       <Input
                         id="pct-buffer"
@@ -618,9 +592,7 @@ export default function Budget() {
                     <div className="space-y-1.5">
                       <Label htmlFor="k-value" className="text-sm">
                         Statistical Sensitivity
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          k (σ multiplier)
-                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">k (σ multiplier)</span>
                       </Label>
                       <Input
                         id="k-value"
@@ -634,9 +606,7 @@ export default function Budget() {
                     <div className="space-y-1.5">
                       <Label htmlFor="history-days" className="text-sm">
                         Daily History Window
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          days
-                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">days</span>
                       </Label>
                       <Input
                         id="history-days"
@@ -649,9 +619,7 @@ export default function Budget() {
                     <div className="space-y-1.5">
                       <Label htmlFor="history-months" className="text-sm">
                         Monthly History Window
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          months
-                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">months</span>
                       </Label>
                       <Input
                         id="history-months"
@@ -687,9 +655,7 @@ export default function Budget() {
                     variant="outline"
                     className="w-full"
                   >
-                    {savingDetection && (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    )}
+                    {savingDetection && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Save Detection Settings
                   </Button>
                 </>
@@ -739,8 +705,7 @@ export default function Budget() {
                             {alert.service_name}
                           </p>
                           <p className="text-xs text-muted-foreground capitalize">
-                            {alert.period_type} · started{" "}
-                            {formatDateTime(alert.breach_started_at)}
+                            {alert.period_type} · started {formatDateTime(alert.breach_started_at)}
                           </p>
                         </div>
                         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
@@ -797,35 +762,19 @@ export default function Budget() {
               ))}
             </div>
           ) : alertHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No alert history yet.
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-8">No alert history yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs font-semibold">
-                    STARTED
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold">
-                    SERVICE
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold">
-                    PERIOD
-                  </TableHead>
+                  <TableHead className="text-xs font-semibold">STARTED</TableHead>
+                  <TableHead className="text-xs font-semibold">SERVICE</TableHead>
+                  <TableHead className="text-xs font-semibold">PERIOD</TableHead>
                   <TableHead className="text-xs font-semibold">RULE</TableHead>
-                  <TableHead className="text-xs font-semibold text-right">
-                    COST
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-right">
-                    THRESHOLD
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-center">
-                    NOTIFICATIONS
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-center">
-                    STATUS
-                  </TableHead>
+                  <TableHead className="text-xs font-semibold text-right">COST</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">THRESHOLD</TableHead>
+                  <TableHead className="text-xs font-semibold text-center">NOTIFICATIONS</TableHead>
+                  <TableHead className="text-xs font-semibold text-center">STATUS</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -834,12 +783,8 @@ export default function Budget() {
                     <TableCell className="text-sm">
                       {formatDateTime(event.breach_started_at)}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {event.service_name}
-                    </TableCell>
-                    <TableCell className="text-sm capitalize">
-                      {event.period_type}
-                    </TableCell>
+                    <TableCell className="text-sm font-medium">{event.service_name}</TableCell>
+                    <TableCell className="text-sm capitalize">{event.period_type}</TableCell>
                     <TableCell className="text-sm">
                       {event.winning_component === "absolute"
                         ? "Budget Ceiling"
@@ -869,10 +814,7 @@ export default function Budget() {
                           resolved
                         </Badge>
                       ) : (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs bg-slate-100 text-slate-500"
-                        >
+                        <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-500">
                           deactivated
                         </Badge>
                       )}

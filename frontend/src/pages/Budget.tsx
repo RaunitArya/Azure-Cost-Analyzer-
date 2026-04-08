@@ -169,7 +169,7 @@ export default function Budget() {
     setReceiverEmail(alertSettings.receiver_email ?? "");
     setEmailEnabled(alertSettings.email_enabled);
     setKValue(String(alertSettings.k_value));
-    setPctBuffer(String(Math.round((alertSettings.percentage_buffer - 1) * 100)));
+    setPctBuffer(((alertSettings.percentage_buffer - 1) * 100).toFixed(2));
     setHistoryDays(String(alertSettings.alert_history_days));
     setHistoryMonths(String(alertSettings.alert_history_months));
     setGlobalCooldown(String(alertSettings.cooldown_minutes));

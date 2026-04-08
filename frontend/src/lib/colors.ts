@@ -1,4 +1,3 @@
-// Consistent color map for all charts
 export const SERVICE_COLORS: Record<string, string> = {
   "Virtual Network": "#3B82F6",
   Storage: "#10B981",
@@ -15,6 +14,23 @@ export const DEFAULT_COLORS = [
   "#06B6D4",
 ];
 
-export function getServiceColor(name: string, index: number): string {
-  return SERVICE_COLORS[name] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0; // Ensure 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
+function hashToHslColor(value: string): string {
+  const hash = hashString(value);
+  const hue = hash % 360;
+  const saturation = 62;
+  const lightness = 52;
+  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+}
+
+export function getServiceColor(name: string, _index?: number): string {
+  return SERVICE_COLORS[name] ?? hashToHslColor(name);
 }

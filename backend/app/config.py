@@ -66,10 +66,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: Environment = Field(default=Environment.DEVELOPMENT)
     DEBUG: bool = Field(default=False)
 
-    CORS_ALLOW_ORIGINS: list[str]
-    CORS_ALLOW_CREDENTIALS: bool
-    CORS_ALLOW_METHODS: list[str]
-    CORS_ALLOW_HEADERS: list[str]
+    CORS_ALLOW_ORIGINS: list[str] = Field(
+        ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+    )
+    CORS_ALLOW_CREDENTIALS: bool = Field(True)
+    CORS_ALLOW_METHODS: list[str] = Field(
+        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    )
+    CORS_ALLOW_HEADERS: list[str] = Field(["*"])
 
     # Azure credentials
     AZURE_CLIENT_ID: str = Field(..., min_length=20)

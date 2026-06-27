@@ -1,3 +1,9 @@
+<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD041 -->
+<p align="center">
+  <img src="./resources/header.png" alt="Banner">
+</p>
+
 # Azure Cloud Cost Analyzer
 
 ![Project Status](https://img.shields.io/badge/status-in%20progress-yellow)
@@ -11,16 +17,31 @@
 ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=Pydantic&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-1A1A1A?logo=uv)
 
+## 🔖 Table of Contents
+
+- [Problem Description](#-problem-description)
+- [Objectives](#-objectives)
+- [Directory Structure](#-directory-structure)
+- [Tools and Technology](#️-tools-and-technology)
+- [System Architecture and Flow](#️-system-architecture-and-flow)
+- [Entity-Relaionship (ER) Diagram](#-entity-relaionship-er-diagram)
+- [Screenshots](#️-screenshots)
+- [Setup & Installation](#-setup--installation)
+- [Obtaining Azure Credentials](#️-obtaining-azure-credentials)
+- [Environment variables (.env)](#️-environment-variables-env)
+- [Setting Up SMTP for Email Alerts](#-setting-up-smtp-for-email-alerts)
+
 ## 📌 Problem Description
 
-Developers often overspend on cloud; this tool: Fetches Azure VM, app service, DB cost Predicts monthly bill Shows per-service breakdown Alerts if budget exceeds a limit Suggests cost-optimization tips
+Monitoring Azure cloud costs manually is time-consuming and reactive, making it difficult to identify unexpected spending before the billing cycle ends. Azure Cost Analyzer automates cost collection, threshold monitoring, and email alerting to help users proactively track and control their cloud expenses.
 
 ## 🎯 Objectives
 
-- To analyze Azure cloud resource costs
-- To provide detailed cost breakdown and visualization
-- To implement budget monitoring and alerting
-- To integrate AI-based cost intelligence
+- Automate the collection of Azure cost data using the Azure Cost Management API.
+- Monitor spending against configurable cost thresholds.
+- Generate incident-based email alerts with cooldown logic to avoid duplicate notifications.
+- Visualize daily, monthly, and service-wise cost trends through an interactive dashboard.
+- Deploy a secure, cloud-native solution using Docker, Azure Container Apps, and Azure Key Vault.
 
 ## 📁 Directory Structure
 
@@ -115,6 +136,99 @@ Azure Cost Analyzer/
             ├── example.test.ts
             └── setup.ts
 ```
+
+## 🛠️ Tools and Technology
+
+![tech-stack](./resources/tech_stack.png)
+
+## 🏗️ System Architecture and Flow
+
+![System Architecture](./resources/ArchitectureDiagram.drawio.png)
+
+### Step-by-Step Data Flow
+
+**1. Authentication & Data Ingestion:**
+
+- FastAPI backend authenticates with Azure Cost Management API using OAuth 2.0 (Service Principal: client ID + secret + tenant ID).
+- Two scheduled jobs trigger ingestion:
+  - **Daily Costs Job** → fetches last 7 days cost per service
+  - **Service Costs Job** → fetches month-to-date cost per service
+
+**2. Preprocessing:**
+
+- Raw Azure SDK responses are normalized, validated via Pydantic models, and converted into SQLModel entities.
+
+**3. Persistence:**
+
+- Processed cost records are saved to PostgreSQL (`DailyCost`, `ServiceCost`, `BillingPeriod`, `AzureService` tables).
+
+**4. Alert Evaluation:**
+
+- After each successful save, the Alert Engine evaluates thresholds (Absolute / Statistical / Percentage-Based).
+- Winning component (max of all) determines breach status.
+- Breaches generate `AlertEvent` + `AnomalyLog` entries and trigger SMTP email notifications.
+
+**5. API Exposure:**
+
+- FastAPI serves REST endpoints for costs, thresholds, alerts, anomaly logs, and global anomaly settings.
+- ThreadPoolExecutor offloads blocking Azure SDK calls to keep the event loop responsive.
+
+**6. Frontend Consumption:**
+
+- React + TypeScript UI fetches data via TanStack Query (caching, auto-refetch, invalidation).
+- Dashboard renders KPI cards, stacked bar / donut / area charts, filter panels, and sortable data tables.
+
+**7. Deployment:**
+
+- Backend → Docker image → Azure Container Registry → Azure Container Apps (via GitHub Actions).
+- Frontend → Build → Azure Static Web Apps.
+
+## 📈 Entity-Relaionship (ER) Diagram
+
+![ER Diagram](./resources/ERDiagram.png)
+
+### **There are 8 Normalized tables:**
+
+**1. azure_service** — The central hub. Stores each unique Azure service name (e.g. Virtual Machines, Storage) and its category. Every other table except anomaly_settings references this via FK.
+
+**2. billing_period** — Represents a monthly billing window with start/end dates. The is_current flag marks the active month. Both service_cost and daily_cost link to this.
+
+**3. service_cost** — Stores the month-to-date aggregated cost per service per billing period. One row per service per month. Updated on every scheduled MTD fetch.
+
+**4. daily_cost** — Stores per-day cost per service. One row per service per usage date per billing period. Populated by the daily 7-day fetch job.
+
+**5. alert_threshold** — User-configured budget ceiling per service per period type (daily or monthly). Holds the absolute_threshold in INR and an is_active flag. Unique per (service_id, period_type) pair.
+
+**6. alert_event** — A recorded threshold breach. Created when current cost exceeds the computed threshold. Stores all three threshold components, the winning one, and a status of open or acknowledged. Deduplicated — only one open alert per service+period at a time.
+
+**7. anomaly_log** — Full audit trail of every evaluation run, whether or not an alert fired. Records current cost, all three computed components, and links to the alert_event if one was created. Used for anomaly detection history and debugging.
+
+**8. anomaly_settings** — A singleton config table (always one row, id=1). Stores global parameters for the alert engine: k_value (statistical multiplier), percentage_buffer, alert_history_days, and alert_history_months. Updated via API, no FK relationships.
+
+## 🖼️ Screenshots
+
+### Dashboard
+
+![dashboard](./resources/dashboard.png)
+![dashboard](./resources/dashboard2.png)
+
+### Cost Analysis Page
+
+![cost-analysis](./resources/cost_analysis.png)
+![cost-analysis-2](./resources/cost_analysis2.png)
+
+### Budget Alerts Page
+
+![alert](./resources/alert.png)
+![alert](./resources/alert2.png)
+
+**Email Alert:**
+![email](./resources/emaiil.png)
+
+### Reports Page
+
+![reports](./resources/reports.png)
+![reports](./resources/reports2.png)
 
 ## 🚀 Setup & Installation
 
